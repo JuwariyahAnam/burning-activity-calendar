@@ -123,10 +123,10 @@ export function createCompare(root, ctx) {
   function defaultB() {
     const other = ctx.regions.find((r) => r.slug !== ctx.current?.slug);
     if (other) return `region:${other.slug}`;
-    if (ctx.current) return `region:${ctx.current.slug}`;
-    const here = cache.get("_");
-    const id = here.districts?.focusIds?.[0];
-    return id != null ? `district:${id}` : "sel";
+    // only one area: its district with the most burning
+    const d = cache.get(ctx.current?.slug || "_").districts;
+    const top = d?.focusIds?.map((i) => d.districts[i]).sort((x, y) => y.cells - x.cells)[0];
+    return top ? `district:${top.id}` : "sel";
   }
 
   let busy = 0;
