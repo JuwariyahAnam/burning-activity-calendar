@@ -75,6 +75,9 @@ a { color: inherit; }
 .nav .name { white-space: nowrap; }
 @media (max-width: 420px) { .nav { gap: 1rem; } .nav .name { font-size: 0.95rem; } }
 .nav ul a:hover { color: var(--ink); }
+@media (max-width: 1080px) { .nav ul { gap: 1.1rem; } .nav { gap: 1.2rem; } }
+@media (max-width: 960px) { .nav ul li.secondary { display: none; } .region-select { max-width: 9rem; } }
+@media (max-width: 860px) { .nav ul li.tertiary { display: none; } }
 @media (max-width: 720px) { .nav ul li:not(:last-child) { display: none; } }
 
 .sample-banner {
@@ -584,3 +587,12 @@ table.cmp-table th[scope="row"] { text-align: left; color: var(--ink-2); font-we
 table.cmp-table td, table.cmp-table thead th { text-align: left; }
 table.cmp-table thead th { color: var(--ink); font-weight: 600; }
 #cmp-body .block { margin-top: 2.6rem; }
+
+/* polish: skip link, no-script, load failure */
+.skip { position: absolute; left: -9999px; top: 0.6rem; z-index: 100; padding: 0.6rem 1rem; border-radius: 999px;
+        background: var(--accent); color: #031021; font-weight: 600; text-decoration: none; }
+.skip:focus { left: 1rem; }
+.no-js .loading { display: none; }
+.noscript { margin: 0; padding: 1rem var(--pad); background: #2a1414; color: #ffc9c0; text-align: center; }
+.loading.failed { flex-direction: column; gap: 0.6rem; text-align: center; padding: 0 var(--pad); }
+.loading small { display: block; font-size: 0.8rem; color: var(--ink-3); }

@@ -30,19 +30,25 @@ async function load() {
     const want = new URLSearchParams(location.search).get("region");
     current = regions.find((r) => r.slug === want) || regions[0] || null;
     const base = current ? `data/${current.slug}/` : "data/";
-    const [m, b] = await Promise.all([
-      fetch(`${base}meta.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-      fetch(`${base}cells.bin`).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }),
+    // all four files at once: the record, the boundaries and the close-up spots
+    const metaP = fetch(`${base}meta.json`).then((r) => { if (!r.ok) throw new Error(`meta.json: HTTP ${r.status}`); return r.json(); });
+    const [m, b, d, h] = await Promise.all([
+      metaP,
+      fetch(`${base}cells.bin`).then((r) => { if (!r.ok) throw new Error(`cells.bin: HTTP ${r.status}`); return r.arrayBuffer(); }),
+      fetch(`${base}districts.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      metaP.then((mm) => { mm.base = base; return loadHotspots(mm); }),
     ]);
-    meta = m; meta.base = base; rows = E.decode(meta, b);
-    districts = await fetch(`${base}districts.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    meta = m; rows = E.decode(meta, b); districts = d; hot = h;
     if (districts) {        // older exports: focus by whole states
-      districts.focusIds ||= districts.districts.filter((d) => districts.focus.includes(d.state)).map((d) => d.id);
+      districts.focusIds ||= districts.districts.filter((x) => districts.focus.includes(x.state)).map((x) => x.id);
       districts.focusMode ||= "states";
     }
-    hot = await loadHotspots(meta);
   } catch (err) {
-    $("loading").textContent = "No data yet. Run python build_site.py, then reload this page.";
+    $("loading").innerHTML = navigator.onLine === false
+      ? "You are offline. Connect to the internet and reload this page."
+      : "The fire data could not be loaded. Reload the page to try again." +
+        "<small>If you run this site yourself: build the data with python build_site.py.</small>";
+    $("loading").classList.add("failed");
     throw err;
   }
   const focusIds = districts ? districts.focusIds : [];
