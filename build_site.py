@@ -55,6 +55,11 @@ def main():
     cd = pd.read_csv(a.data, parse_dates=["local_date"])
     cd = cd[cd["satellite"].isin(FLAGS)]
     cov = hz.coverage(cd)
+    missing = {"MODIS", "VIIRS"} - set(cov)
+    if missing:
+        raise SystemExit(
+            f"No {' or '.join(sorted(missing))} data in {a.data}. The site needs both instruments.\n"
+            "Finish the download (python fetch_firms.py), then run prepare.py and build_site.py again.")
     snpp = cd.loc[cd["satellite"] == "SNPP", "local_date"]
 
     cells = (cd[["cell_lat", "cell_lon"]].drop_duplicates()
