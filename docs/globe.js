@@ -325,7 +325,10 @@ const SATS = [
 ];
 const INC = 98.2;
 
-export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl }) {
+export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl, districts }) {
+  // the lens frames the focus states when boundaries are available
+  const focusStates = districts ? districts.states.filter((st) => districts.focus.includes(st.name)) : [];
+  let lensOutlines = [];
   const fire = doyLists(meta, rows);
   const centre = [(meta.extent[0] + meta.extent[2]) / 2, (meta.extent[1] + meta.extent[3]) / 2];
   const viewLon = centre[1] - 6;
@@ -379,7 +382,12 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
     lensCanvas.width = lensCanvas.height = size;
     lensCtx = lensCanvas.getContext("2d");
     lensCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const [s, w, n, e] = meta.extent, pad = meta.cellDeg;
+    let [s, w, n, e] = meta.extent, pad = meta.cellDeg;
+    if (focusStates.length) {
+      const pts = focusStates.flatMap((st) => st.rings.flat());
+      s = Math.min(...pts.map((p) => p[1])); n = Math.max(...pts.map((p) => p[1]));
+      w = Math.min(...pts.map((p) => p[0])); e = Math.max(...pts.map((p) => p[0])); pad = 0.05;
+    }
     const kx = Math.cos(((s + n) / 2) * RAD);
     const spanX = (e - w + 2 * pad) * kx, spanY = n - s + 2 * pad;
     const scale = (lens.r * 1.5) / Math.max(spanX, spanY);
@@ -388,6 +396,17 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
       px: (lat, lon) => [lens.r + (lon - (w + e) / 2) * kx * scale, lens.r - (lat - (s + n) / 2) * scale],
     };
     lensCtx.fillStyle = "#050c1c"; lensCtx.fillRect(0, 0, lens.r * 2, lens.r * 2);
+    // state outlines and names in lens coordinates
+    lensOutlines = focusStates.map((st) => {
+      const p = new Path2D();
+      for (const r of st.rings) r.forEach(([lon, lat], i) => {
+        const [x, y] = lensProj.px(lat, lon);
+        i ? p.lineTo(x, y) : p.moveTo(x, y);
+      });
+      const big = st.rings.reduce((a, r) => (r.length > a.length ? r : a), []);
+      const [lon, lat] = big.reduce((a, [x, y]) => [a[0] + x / big.length, a[1] + y / big.length], [0, 0]);
+      return { p, name: st.name, at: lensProj.px(lat, lon) };
+    });
     if (clockEl) {
       Object.assign(clockEl.style, {
         left: `${lens.x - lens.r - (W >= 960 ? 22 : 12)}px`, top: `${lens.y - (W >= 960 ? 6 : 34)}px`,
@@ -509,6 +528,17 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
     ctx.save();
     ctx.beginPath(); ctx.arc(lens.x, lens.y, lens.r, 0, Math.PI * 2); ctx.clip();
     ctx.drawImage(lensCanvas, lens.x - lens.r, lens.y - lens.r, lens.r * 2, lens.r * 2);
+    if (lensOutlines.length) {
+      ctx.translate(lens.x - lens.r, lens.y - lens.r);
+      ctx.strokeStyle = "rgba(200,225,255,0.55)"; ctx.lineWidth = 1; ctx.lineJoin = "round";
+      for (const o of lensOutlines) ctx.stroke(o.p);
+      ctx.font = `600 ${lens.r > 90 ? 12 : 10}px 'Instrument Sans', system-ui, sans-serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      for (const o of lensOutlines) {
+        ctx.lineWidth = 3; ctx.strokeStyle = "rgba(5,12,28,0.85)"; ctx.strokeText(o.name, o.at[0], o.at[1]);
+        ctx.fillStyle = "rgba(235,243,255,0.9)"; ctx.fillText(o.name, o.at[0], o.at[1]);
+      }
+    }
     ctx.restore();
     ctx.strokeStyle = "rgba(160,200,255,.55)"; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(lens.x, lens.y, lens.r, 0, Math.PI * 2); ctx.stroke();

@@ -99,8 +99,8 @@
     <div class="wrap">
       <div class="intro">
         <h2 id="explore-title">Choose an area. See its burning calendar.</h2>
-        <p class="lede">Drag a rectangle on the map. The calendar, this month's comparison and
-          the downloads all update for that area.</p>
+        <p class="lede">Click a district on the map, or drag a rectangle. The figures, the
+          calendar, this month's comparison and the downloads all update for that area.</p>
       </div>
 
       <div class="map" id="map" aria-label="Map of fire activity. Drag to choose an area, or type coordinates below.">
@@ -108,7 +108,8 @@
         <canvas id="map-canvas"></canvas>
         <div class="labels" id="map-labels"></div>
         <button class="btn quiet reset" id="reset-area" type="button">Reset area</button>
-        <div class="hint" id="map-hint">Drag to choose an area</div>
+        <div class="hint" id="map-hint">Click a district, or drag to draw an area</div>
+        <div class="map-legend" id="map-legend"></div>
         <div class="credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a></div>
       </div>
 
@@ -142,7 +143,21 @@
       </form>
       <p class="message" id="message" hidden></p>
 
+      <p class="selection" id="selection-label" aria-live="polite"></p>
       <div class="figures" id="figures" aria-live="polite"></div>
+
+      <div class="block" id="districts-block" hidden>
+        <div class="block-head">
+          <div>
+            <h3 id="districts-title">Where it is burning this month</h3>
+            <p class="muted small" id="districts-note">Harmonized fire-days per district for the same days of the month, against the median of earlier years.</p>
+          </div>
+          <button class="link" id="districts-toggle" type="button" style="background:none;border:0;cursor:pointer;font:inherit">Show all districts</button>
+        </div>
+        <div class="table-wrap glass panel">
+          <table class="data districts" id="districts-table"></table>
+        </div>
+      </div>
 
       <div class="block">
         <div class="block-head">
@@ -275,7 +290,9 @@
     NOAA-20). We acknowledge the use of data and imagery from NASA's Fire Information for
     Resource Management System (FIRMS), part of NASA's Earth Science Data and Information System
     (ESDIS). Earth: NASA Blue Marble (public domain, via the three-globe package), colour-graded, with
-    generated clouds. Base map © OpenStreetMap contributors © CARTO.</p>
+    generated clouds. Base map © OpenStreetMap contributors © CARTO. State and district boundaries:
+    geoBoundaries (Runfola et al. 2020, PLOS ONE), Open Database License; shown for reference
+    only and not an authoritative depiction of any border.</p>
   <p>Built for the NASA Space Apps Challenge 2026, Harmonization of MODIS and VIIRS Hot Spots.
     Parts of the code and text were drafted with an AI assistant (Claude) and reviewed by the team.
     <a class="link" href="https://github.com/JuwariyahAnam/burning-activity-calendar">Source code</a></p>

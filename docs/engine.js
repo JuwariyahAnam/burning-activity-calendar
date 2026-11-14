@@ -36,14 +36,22 @@ export function cellMask(meta, bbox) {
   return mask;
 }
 
+// Mask of the cells that belong to any of the given districts.
+export function districtMask(meta, cellDistrict, ids) {
+  const want = new Set(ids), mask = new Uint8Array(meta.cells.length);
+  cellDistrict.forEach((d, i) => { if (want.has(d)) mask[i] = 1; });
+  return mask;
+}
+
 // Daily active-cell counts per instrument. NaN = instrument not observing.
-export function dailyCounts(meta, rows, bbox, { aquaOnly = false, viirsAll = false } = {}) {
+// The area is opts.mask (one byte per cell) when given, otherwise the bbox.
+export function dailyCounts(meta, rows, bbox, { aquaOnly = false, viirsAll = false, mask: given } = {}) {
   const start = Math.min(meta.coverage.MODIS[0], meta.coverage.VIIRS[0]);
   const end = Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]);
   const len = end - start + 1;
   const modis = new Float64Array(len);
   const viirs = new Float64Array(len);
-  const mask = cellMask(meta, bbox);
+  const mask = given || cellMask(meta, bbox);
   const mBits = aquaOnly ? FLAG.AQUA : FLAG.TERRA | FLAG.AQUA;
   const snppEnd = meta.snppEnd; // null when S-NPP is absent
   for (let i = 0; i < rows.day.length; i++) {
@@ -258,6 +266,72 @@ export function stepCheck(months, k, nYears = 3) {
 }
 
 function range(a, b) { const r = []; for (let i = a; i < b; i++) r.push(i); return r; }
+
+// ------------------------------------------------------- per district
+// Harmonized fire-days for every district in one pass, using the scaling
+// factors k of the wider area (districts are too small to calibrate alone).
+// Returns per district: this month so far, the median of earlier years for
+// the same days, and the average per complete year in [yearFrom, yearTo].
+export function districtStats(meta, rows, cellDistrict, nDistricts, k, opts, yearFrom, yearTo) {
+  const { aquaOnly = false, viirsAll = false } = opts;
+  const start = Math.min(meta.coverage.MODIS[0], meta.coverage.VIIRS[0]);
+  const end = Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]);
+  const len = end - start + 1;
+  const M = Array.from({ length: nDistricts }, () => new Float32Array(len));
+  const V = Array.from({ length: nDistricts }, () => new Float32Array(len));
+  const mBits = aquaOnly ? FLAG.AQUA : FLAG.TERRA | FLAG.AQUA, snppEnd = meta.snppEnd;
+  for (let i = 0; i < rows.day.length; i++) {
+    const dist = cellDistrict[rows.cell[i]];
+    if (dist < 0) continue;
+    const d = rows.day[i], f = rows.flags[i], j = d - start;
+    if (f & mBits) M[dist][j]++;
+    let v;
+    if (viirsAll) v = f & (FLAG.SNPP | FLAG.NOAA20);
+    else if (snppEnd == null) v = f & FLAG.NOAA20;
+    else v = (f & FLAG.SNPP) || ((f & FLAG.NOAA20) && d > snppEnd);
+    if (v) V[dist][j]++;
+  }
+  // calendar of each daily index, computed once
+  const year = new Int16Array(len), month = new Int8Array(len), dom = new Int8Array(len);
+  for (let j = 0; j < len; j++) {
+    const dt = dayToDate(meta, start + j);
+    year[j] = dt.getUTCFullYear(); month[j] = dt.getUTCMonth() + 1; dom[j] = dt.getUTCDate();
+  }
+  const [vA, vB] = meta.coverage.VIIRS, [mA, mB] = meta.coverage.MODIS;
+  const last = len - 1, lastY = year[last], lastM = month[last], lastD = dom[last];
+  const out = [];
+  for (let dist = 0; dist < nDistricts; dist++) {
+    const byYearMtd = new Map(), byYear = new Map();
+    for (let j = 0; j < len; j++) {
+      const d = start + j;
+      let h;
+      if (d >= vA && d <= vB) h = V[dist][j];
+      else if (d >= mA && d <= mB) h = M[dist][j] * k[month[j]];
+      else continue;
+      const y = year[j];
+      const a = byYear.get(y) || { sum: 0, n: 0 };
+      a.sum += h; a.n++; byYear.set(y, a);
+      if (month[j] === lastM && dom[j] <= lastD) {
+        const b = byYearMtd.get(y) || { sum: 0, n: 0 };
+        b.sum += h; b.n++; byYearMtd.set(y, b);
+      }
+    }
+    const daysIn = (y) => ((y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365);
+    const full = [...byYear.entries()].filter(([y, a]) => a.n === daysIn(y) && y >= yearFrom && y <= yearTo);
+    const earlier = [...byYearMtd.entries()]
+      .filter(([y, b]) => y < lastY && b.n === lastD && y >= yearFrom && y <= yearTo).map(([, b]) => b.sum)
+      .sort((a, b) => a - b);
+    const mid = Math.floor(earlier.length / 2);
+    const median = earlier.length ? (earlier.length % 2 ? earlier[mid] : (earlier[mid - 1] + earlier[mid]) / 2) : NaN;
+    out.push({
+      id: dist,
+      now: byYearMtd.get(lastY)?.sum ?? NaN,
+      usual: median,
+      perYear: full.length ? full.reduce((s, [, a]) => s + a.sum, 0) / full.length : NaN,
+    });
+  }
+  return { districts: out, month: lastM, day: lastD, year: lastY };
+}
 
 // ------------------------------------------------------------- run all
 export function analyse(meta, rows, opts) {

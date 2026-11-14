@@ -2,14 +2,15 @@
 // AI disclosure: drafted with Claude (Anthropic); reviewed by the team.
 import * as E from "./engine.js";
 import { lineChart, renderCalendar, calendarTable, barChart, showTip, fmt, pct, median,
-         COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
+         ember, COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
 import { createMap } from "./map.js";
 import { createGlobeHero } from "./globe.js";
 
 const $ = (id) => document.getElementById(id);
-const state = { bbox: null, method: "monthly", aquaOnly: false, viirsAll: false,
-                yearFrom: null, yearTo: null, calMode: "activity" };
-let meta, rows, result, map;
+// selection: { kind: "bbox", bbox } or { kind: "districts", ids: [...] }
+const state = { sel: null, method: "monthly", aquaOnly: false, viirsAll: false,
+                yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false };
+let meta, rows, result, map, districts = null, defaultSel, dStats = null, regionK = null;
 
 async function load() {
   try {
@@ -18,21 +19,26 @@ async function load() {
       fetch("data/cells.bin").then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }),
     ]);
     meta = m; rows = E.decode(meta, b);
+    districts = await fetch("data/districts.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
   } catch (err) {
     $("loading").textContent = "No data yet. Run python build_site.py, then reload this page.";
     throw err;
   }
-  state.bbox = [...meta.bbox];
+  const focusIds = districts ? districts.districts.filter((d) => districts.focus.includes(d.state)).map((d) => d.id) : [];
+  defaultSel = focusIds.length ? { kind: "districts", ids: focusIds, label: districts.focus.join(" and ") }
+                               : { kind: "bbox", bbox: [...meta.bbox] };
+  state.sel = defaultSel;
   $("sample-banner").hidden = !meta.sample;
   document.querySelectorAll(".region-name").forEach((n) => (n.textContent = meta.region));
   $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so you can see when burning happens and whether this season is unusual.`;
   $("data-note").textContent = `Data processed ${meta.generated}. Records from ${fmtDate(meta.coverage.MODIS[0])} to ${fmtDate(Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]))}.`;
 
   createGlobeHero($("hero-canvas"), meta, rows,
-    { monthEl: $("hero-month"), trackEl: $("hero-track"), clockEl: $("hero-clock") });
+    { monthEl: $("hero-month"), trackEl: $("hero-track"), clockEl: $("hero-clock"), districts });
   $("hero-note").textContent = `${meta.region}: fires on each date, all years. Brighter cells burned on that date in more years.`;
   story();
-  map = createMap($("map"), meta, { onSelect: (b) => { state.bbox = b; update(); } });
+  map = createMap($("map"), meta, { districts, onSelect: (sel) => { state.sel = sel; update(); },
+                                    describe: describeDistrict });
   wireControls();
   update();
   $("loading").classList.add("done");
@@ -43,7 +49,7 @@ const fmtDate = (d) => E.dayToDate(meta, d).toLocaleDateString("en-GB",
 
 // ---------------------------------------------------------- scroll story
 function story() {
-  const r = E.analyse(meta, rows, { bbox: meta.bbox, method: "monthly" });
+  const r = E.analyse(meta, rows, { ...selOpts(defaultSel), method: "monthly" });
   const series = [
     { id: "modis", name: "MODIS", color: COLORS.modis, values: r.annualModis },
     { id: "viirs", name: "VIIRS", color: COLORS.viirs, values: r.annualViirs },
@@ -101,13 +107,13 @@ function wireControls() {
   seg("cal-mode", "calMode", renderCalendarBlock);
   $("aqua-only").addEventListener("change", (e) => { state.aquaOnly = e.target.checked; update(); });
   $("viirs-all").addEventListener("change", (e) => { state.viirsAll = e.target.checked; update(); });
-  $("reset-area").addEventListener("click", () => { state.bbox = [...meta.bbox]; update(); });
+  $("reset-area").addEventListener("click", () => { state.sel = defaultSel; update(); });
   $("apply-coords").addEventListener("click", () => {
     const v = ["c-s", "c-w", "c-n", "c-e"].map((id) => parseFloat($(id).value));
     if (v.some((x) => !Number.isFinite(x)) || v[0] >= v[2] || v[1] >= v[3]) {
       return message("Enter South below North and West left of East, in degrees.");
     }
-    state.bbox = v; update();
+    state.sel = { kind: "bbox", bbox: v }; update();
   });
   for (const id of ["y-from", "y-to"]) $(id).addEventListener("change", () => {
     state.yearFrom = +$("y-from").value; state.yearTo = +$("y-to").value;
@@ -118,6 +124,7 @@ function wireControls() {
     const t = $("cal-table"); t.hidden = !t.hidden;
     e.target.textContent = t.hidden ? "View as table" : "Hide table";
   });
+  $("districts-toggle").addEventListener("click", () => { state.allDistricts = !state.allDistricts; renderDistricts(); });
   $("dl-monthly").addEventListener("click", downloadMonthly);
   $("dl-daily").addEventListener("click", downloadDaily);
   $("dl-cells").addEventListener("click", downloadCells);
@@ -129,11 +136,37 @@ function message(text) {
 }
 
 // ---------------------------------------------------------- analysis
+// ---------------------------------------------------------- selection
+function selOpts(sel) {
+  if (sel.kind === "districts") return { mask: E.districtMask(meta, districts.cellDistrict, sel.ids) };
+  return { bbox: sel.bbox };
+}
+function selBox(sel) {
+  if (sel.kind === "bbox") return sel.bbox;
+  const m = E.districtMask(meta, districts.cellDistrict, sel.ids);
+  let s = 90, w = 180, n = -90, e = -180;
+  meta.cells.forEach(([la, lo], i) => { if (m[i]) { s = Math.min(s, la); n = Math.max(n, la); w = Math.min(w, lo); e = Math.max(e, lo); } });
+  const h = meta.cellDeg / 2;
+  return [s - h, w - h, n + h, e + h].map((v) => +v.toFixed(2));
+}
+function selName(sel) {
+  if (sel.kind === "bbox") {
+    const [s, w, n, e] = sel.bbox;
+    return `the area ${s}–${n}°N, ${w}–${e}°E`;
+  }
+  if (sel.label) return `${sel.label} (${sel.ids.length} districts)`;
+  return sel.ids.map((i) => { const d = districts.districts[i]; return `${d.name} district${d.state ? `, ${d.state}` : ""}`; }).join(", ");
+}
+
 function update() {
-  ["c-s", "c-w", "c-n", "c-e"].forEach((id, i) => ($(id).value = state.bbox[i]));
-  map.setBBox(state.bbox);
+  selBox(state.sel).forEach((v, i) => ($(["c-s", "c-w", "c-n", "c-e"][i]).value = v));
+  map.setSelection(state.sel);
+  $("selection-label").innerHTML = `Showing <b>${selName(state.sel)}</b>`;
   try {
-    result = E.analyse(meta, rows, state);
+    // the wider area's scaling factors are used for the district table
+    regionK = E.analyse(meta, rows, { ...selOpts(defaultSel), method: state.method,
+                                      aquaOnly: state.aquaOnly, viirsAll: state.viirsAll }).k;
+    result = E.analyse(meta, rows, { ...state, ...selOpts(state.sel) });
     message("");
   } catch (err) {
     result = null;
@@ -151,7 +184,12 @@ function update() {
 
 function renderAll() {
   if (!result) return;
-  map.setHeat(heat());
+  const max = map.setHeat(heat());
+  $("map-legend").innerHTML = `Fire-days per 10 km cell, ${state.yearFrom}–${state.yearTo}
+    <div class="bar" style="background:linear-gradient(90deg,${[0.18, 0.4, 0.6, 0.8, 1].map(ember).join(",")})"></div>
+    <div class="ends"><span>1</span><span>${fmt(max)} (log scale)</span></div>
+    ${districts ? `<div class="lines"><span><i style="border-top:1.6px solid rgba(225,238,255,.8)"></i>State</span><span><i style="border-top:1px solid rgba(170,205,255,.5)"></i>District</span></div>` : ""}`;
+  renderDistricts();
   renderFigures();
   renderCalendarBlock();
   renderMtd();
@@ -254,6 +292,65 @@ function renderTrust() {
   });
 }
 
+// ---------------------------------------------------------- districts
+let dKey = "";
+function computeDistrictStats() {
+  if (!districts || !regionK) return null;
+  const key = [state.method, state.aquaOnly, state.viirsAll, state.yearFrom, state.yearTo].join("|");
+  if (key === dKey && dStats) return dStats;      // selection changes don't affect this
+  dKey = key;
+  return E.districtStats(meta, rows, districts.cellDistrict, districts.districts.length, regionK,
+                         state, state.yearFrom, state.yearTo);
+}
+
+function describeDistrict(i) {
+  const s = dStats?.districts[i];
+  if (!s) return "";
+  const label = `${MONTHS[dStats.month - 1]} 1–${dStats.day}`;
+  const diff = s.usual > 0 ? 100 * (s.now / s.usual - 1) : NaN;
+  return `<div class="r"><span>${label}, ${dStats.year}</span><b>${fmt(s.now)} fire-days</b></div>` +
+    `<div class="r"><span>Usual for these days</span><b>${fmt(s.usual)}</b></div>` +
+    (Number.isFinite(diff) ? `<div class="r"><span>Change</span><b>${pct(diff)}</b></div>` : "") +
+    `<div class="r"><span>Average per year</span><b>${fmt(s.perYear)}</b></div>`;
+}
+
+function renderDistricts() {
+  dStats = computeDistrictStats();
+  $("districts-block").hidden = !dStats;
+  if (!dStats) return;
+  const focus = new Set(districts.focus);
+  const label = `${MONTH_NAMES[dStats.month - 1]} 1–${dStats.day}, ${dStats.year}`;
+  $("districts-title").textContent = `Where it is burning: ${label}`;
+  const list = dStats.districts
+    .map((s) => ({ ...s, d: districts.districts[s.id] }))
+    .filter((s) => s.d.cells > 0 && (!focus.size || focus.has(s.d.state)))
+    .sort((a, b) => (b.now || 0) - (a.now || 0));
+  const shown = state.allDistricts ? list : list.slice(0, 10);
+  $("districts-toggle").textContent = state.allDistricts ? "Show top 10" : `Show all ${list.length} districts`;
+  $("districts-toggle").hidden = list.length <= 10;
+  const top = Math.max(1, ...list.map((s) => Math.max(s.now || 0, s.usual || 0)));
+  const selIds = state.sel.kind === "districts" ? new Set(state.sel.ids) : new Set();
+  $("districts-table").innerHTML = `<thead><tr><th>District</th><th class="barcell">This month so far
+      <span class="muted">(bar) and usual (line)</span></th><th>Fire-days</th><th>Usual</th><th>Change</th><th class="py">Per year</th></tr></thead><tbody>${
+    shown.map((s) => {
+      const diff = s.usual > 0 ? 100 * (s.now / s.usual - 1) : NaN;
+      const cls = diff > 10 ? "up" : diff < -10 ? "down" : "";
+      return `<tr tabindex="0" data-id="${s.id}" class="${selIds.size === 1 && selIds.has(s.id) ? "on" : ""}">
+        <td>${s.d.name}<span class="st">${s.d.state}</span></td>
+        <td class="barcell"><div class="bar"><span style="width:${(100 * (s.now || 0)) / top}%"></span>${Number.isFinite(s.usual) ? `<em style="left:${(100 * s.usual) / top}%"></em>` : ""}</div></td>
+        <td>${fmt(s.now)}</td><td>${fmt(s.usual)}</td><td class="${cls}">${pct(diff)}</td><td class="py">${fmt(s.perYear)}</td></tr>`;
+    }).join("")}</tbody>`;
+  $("districts-table").querySelectorAll("tbody tr").forEach((tr) => {
+    const pick = () => {
+      state.sel = { kind: "districts", ids: [+tr.dataset.id] };
+      update();
+      $("map").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    };
+    tr.addEventListener("click", pick);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+  });
+}
+
 // ---------------------------------------------------------- downloads
 function save(name, text) {
   const a = document.createElement("a");
@@ -261,7 +358,7 @@ function save(name, text) {
   a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
-const header = () => `# Burning Activity Calendar export. Area S,W,N,E = ${state.bbox.join(",")}; calibration ${state.method}; MODIS ${state.aquaOnly ? "Aqua" : "Terra+Aqua"}; VIIRS ${state.viirsAll ? "all satellites" : "reference satellite"}. Source: NASA FIRMS.\n`;
+const header = () => `# Burning Activity Calendar export. Area: ${selName(state.sel)}; calibration ${state.method}; MODIS ${state.aquaOnly ? "Aqua" : "Terra+Aqua"}; VIIRS ${state.viirsAll ? "all satellites" : "reference satellite"}. Source: NASA FIRMS.\n`;
 const iso = (d) => E.dayToDate(meta, d).toISOString().slice(0, 10);
 const num = (v) => (Number.isFinite(v) ? +v.toFixed(3) : "");
 
@@ -284,14 +381,17 @@ function downloadDaily() {
   save("burning_calendar_daily.csv", header() + "date,harmonized,source,modis_raw,viirs_raw\n" + lines.join("\n"));
 }
 function downloadCells() {
-  const mask = E.cellMask(meta, state.bbox), names = ["Terra", "Aqua", "SNPP", "NOAA20"];
+  const sel = selOpts(state.sel), names = ["Terra", "Aqua", "SNPP", "NOAA20"];
+  const mask = sel.mask || E.cellMask(meta, sel.bbox);
   const lines = [];
   for (let i = 0; i < rows.day.length; i++) {
     if (!mask[rows.cell[i]]) continue;
     const f = rows.flags[i], [la, lo] = meta.cells[rows.cell[i]];
-    lines.push([iso(rows.day[i]), la, lo, names.filter((_, b) => f & (1 << b)).join("+")].join(","));
+    const di = districts ? districts.cellDistrict[rows.cell[i]] : -1;
+    const dn = di >= 0 ? `"${districts.districts[di].name}","${districts.districts[di].state}"` : ",";
+    lines.push([iso(rows.day[i]), la, lo, dn, names.filter((_, b) => f & (1 << b)).join("+")].join(","));
   }
-  save("fire_cell_days.csv", header() + "date,cell_lat,cell_lon,satellites\n" + lines.join("\n"));
+  save("fire_cell_days.csv", header() + "date,cell_lat,cell_lon,district,state,satellites\n" + lines.join("\n"));
 }
 
 load();

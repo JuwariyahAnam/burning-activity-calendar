@@ -20,6 +20,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import boundaries
 import harmonize as hz
 
 DATE0 = pd.Timestamp("2000-01-01")
@@ -37,6 +38,12 @@ def main():
                    help="grid size used by prepare.py, degrees")
     p.add_argument("--sample", action="store_true",
                    help="mark the export as synthetic test data")
+    p.add_argument("--states", default="Punjab,Haryana",
+                   help="states the site selects by default (comma list)")
+    p.add_argument("--no-districts", action="store_true",
+                   help="skip downloading state and district boundaries")
+    p.add_argument("--adm1", help="local geoBoundaries IND ADM1 GeoJSON (optional)")
+    p.add_argument("--adm2", help="local geoBoundaries IND ADM2 GeoJSON (optional)")
     a = p.parse_args()
 
     cd = pd.read_csv(a.data, parse_dates=["local_date"])
@@ -87,6 +94,15 @@ def main():
         "sample": bool(a.sample),
     }
     (out / "meta.json").write_text(json.dumps(meta, separators=(",", ":")))
+    dist_file = out / "districts.json"
+    if not a.no_districts:
+        bnd = boundaries.build(meta["cells"], meta["extent"],
+                               [x.strip() for x in a.states.split(",")], a.adm1, a.adm2)
+        if bnd:
+            dist_file.write_text(json.dumps(bnd, separators=(",", ":")))
+            print(f"  wrote {dist_file} ({dist_file.stat().st_size / 1e6:.1f} MB)")
+    elif dist_file.exists():
+        dist_file.unlink()
     size = (out / "cells.bin").stat().st_size / 1e6
     print(f"{len(day):,} cell-days, {len(cells):,} grid cells, "
           f"cells.bin {size:.1f} MB -> {out}")

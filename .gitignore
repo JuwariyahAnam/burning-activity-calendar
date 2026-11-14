@@ -6,3 +6,6 @@ __pycache__/
 *.pyc
 .venv/
 .DS_Store
+
+# downloaded boundary files (re-downloaded by build_site.py)
+data/boundaries/

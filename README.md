@@ -20,7 +20,7 @@ python fetch_firms.py                  # Punjab & Haryana, 2001 to today -> raw/
 python prepare.py "raw/*.csv"          # writes data/cell_days.csv.gz
 
 # 3. build the website data and preview it
-python build_site.py                   # writes docs/data/
+python build_site.py                   # writes docs/data/ (downloads district boundaries once)
 cd docs && python -m http.server 8000  # open http://localhost:8000
 
 # (optional) the Streamlit version
@@ -74,6 +74,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 | `harmonize.py` | All data and harmonization logic |
 | `prepare.py` | Raw FIRMS CSVs to a compact cell-day file |
 | `build_site.py` | Exports data for the website to `docs/data/` |
+| `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
 | `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe.js` (hero globe) |
 | `app.py` | Streamlit app (alternative interface) |
 | `tests/make_synthetic.py` | Synthetic data for code testing only |
@@ -82,6 +83,9 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 
 - NASA FIRMS active fire data: MODIS Collection 6.1 and VIIRS 375 m
   (S-NPP, NOAA-20). https://firms.modaps.eosdis.nasa.gov/
+- State and district boundaries: geoBoundaries (Runfola, D. et al. 2020, PLOS ONE
+  15(4): e0231866), India ADM1/ADM2 simplified, Open Database License. Downloaded by
+  `build_site.py` (cached in `data/boundaries/`); shown for reference only.
 - Libraries: Streamlit, pandas, NumPy, Plotly, Folium, streamlit-folium.
 - Website: NASA Blue Marble Earth imagery (public domain, colour-graded, with generated clouds) via the three-globe package on jsDelivr; Natural Earth land outlines (public domain, fallback) via the world-atlas package; base map tiles © OpenStreetMap contributors © CARTO; Instrument Sans font (Google Fonts, SIL Open Font License).
 - TODO: list every other dataset, library and reference you use.
