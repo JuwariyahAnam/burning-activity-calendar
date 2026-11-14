@@ -328,6 +328,7 @@ export function districtStats(meta, rows, cellDistrict, nDistricts, k, opts, yea
       now: byYearMtd.get(lastY)?.sum ?? NaN,
       usual: median,
       perYear: full.length ? full.reduce((s, [, a]) => s + a.sum, 0) / full.length : NaN,
+      series: full.map(([y, a]) => [y, a.sum]).sort((p, q) => p[0] - q[0]),   // complete years
     });
   }
   return { districts: out, month: lastM, day: lastD, year: lastY };

@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Burning Activity Calendar</title>
-<meta name="description" content="A harmonized MODIS and VIIRS burning activity calendar from NASA FIRMS active fire hotspots. NASA Space Apps Challenge 2026.">
+<meta name="description" content="When and where burning happens: up to 25 years of NASA MODIS and VIIRS fire detections joined into one burning activity calendar, with district maps, a two-week outlook and season trends.">
+<meta name="theme-color" content="#030915">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Burning Activity Calendar">
+<meta property="og:description" content="Up to 25 years of NASA MODIS and VIIRS fire detections joined into one burning calendar, with district maps, a two-week outlook and season trends.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Ccircle cx='11' cy='11' r='6' fill='%232f6fb8'/%3E%3Ccircle cx='12.8' cy='9.4' r='1.8' fill='%23f58f4a'/%3E%3Cellipse cx='11' cy='11' rx='10' ry='4' fill='none' stroke='%235cc8f2' stroke-width='1.4' transform='rotate(-28 11 11)'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
@@ -189,8 +194,24 @@
       </form>
       <p class="message" id="message" hidden></p>
 
-      <p class="selection" id="selection-label" aria-live="polite"></p>
+      <div class="selection-row">
+        <p class="selection" id="selection-label" aria-live="polite"></p>
+        <button class="btn quiet share" id="share" type="button">Copy link to this view</button>
+      </div>
+      <p class="freshness" id="freshness"></p>
       <div class="figures reveal" id="figures" aria-live="polite"></div>
+
+      <div class="block" id="outlook-block" hidden>
+        <div class="block-head">
+          <div>
+            <h3 id="outlook-title">The next two weeks</h3>
+            <p class="muted small">From the same dates in every earlier year: a guide to what is
+              usual here, not a weather-based forecast.</p>
+          </div>
+        </div>
+        <p class="outlook-lead" id="outlook-lead"></p>
+        <div class="outlook" id="outlook"></div>
+      </div>
 
       <div class="block" id="districts-block" hidden>
         <div class="block-head">
@@ -222,6 +243,38 @@
         <div class="cal" id="calendar" role="grid" aria-label="Burning calendar"></div>
         <div class="scale" id="cal-scale"></div>
         <div class="table-wrap" id="cal-table" hidden></div>
+      </div>
+
+      <div class="block" id="season-block" hidden>
+        <div class="block-head">
+          <div>
+            <h3>A typical year, day by day</h3>
+            <p class="muted small" id="season-note">Harmonized fire-days per day (15-day average).
+              The line is the usual level, the band covers most years (10th to 90th percentile).</p>
+          </div>
+          <div class="actions" style="justify-content:flex-end">
+            <label class="muted small" for="compare-year">Compare with</label>
+            <select id="compare-year"></select>
+          </div>
+        </div>
+        <ul class="legend static" id="season-legend"></ul>
+        <svg class="chart" id="season-svg" role="img" aria-labelledby="season-desc"></svg>
+        <p class="visually-hidden" id="season-desc">Chart of the usual fire-days for each day of the year, with this year drawn on top.</p>
+        <div class="critical" id="critical"></div>
+      </div>
+
+      <div class="block" id="timing-block" hidden>
+        <div class="block-head">
+          <div>
+            <h3>Is the season shifting?</h3>
+            <p class="muted small">Each row is one year. The line runs from the date 10% of that
+              season's burning had happened to the date 90% had; the dot marks halfway. The dashed
+              line is the long-term trend.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Season" id="timing-season"></div>
+        </div>
+        <p class="timing-summary" id="timing-summary"></p>
+        <svg class="chart" id="timing-svg" role="img" aria-labelledby="timing-summary"></svg>
       </div>
 
       <div class="block">
@@ -326,6 +379,38 @@
         <button class="btn" type="button" id="dl-monthly">Download monthly calendar (CSV)</button>
         <button class="btn quiet" type="button" id="dl-daily">Download daily series (CSV)</button>
         <button class="btn quiet" type="button" id="dl-cells">Download fire cell-days (CSV)</button>
+        <button class="btn quiet" type="button" id="dl-season">Download typical year (CSV)</button>
+        <button class="btn quiet" type="button" id="dl-timing">Download season timing (CSV)</button>
+        <button class="btn quiet" type="button" id="dl-districts">Download district table (CSV)</button>
+      </div>
+      <div class="cite">
+        <h3>How to cite</h3>
+        <p class="muted small">For this view (the link opens the same area, years and settings):</p>
+        <p class="cite-text" id="cite-view"></p>
+        <button class="btn quiet" type="button" id="copy-cite">Copy citation</button>
+        <p class="muted small">For the satellite data, cite NASA FIRMS and the products used:</p>
+        <ul class="cite-list small">
+          <li>MODIS Collection 6.1 active fires, MCD14ML (standard) and MCD14DL (near real-time).
+            doi:10.5067/FIRMS/MODIS/MCD14ML; doi:10.5067/FIRMS/MODIS/MCD14DL.NRT.0061</li>
+          <li>VIIRS 375 m active fires, Suomi NPP (VNP14IMGT) and NOAA-20 (VJ114IMGT).
+            doi:10.5067/FIRMS/VIIRS/VNP14IMGT_NRT.002; doi:10.5067/FIRMS/VIIRS/VJ114IMGT_NRT.002</li>
+          <li>Giglio, L., Schroeder, W. and Justice, C. O. (2016). The collection 6 MODIS active fire
+            detection algorithm and fire products. Remote Sensing of Environment 178, 31–41.</li>
+          <li>Schroeder, W. et al. (2014). The New VIIRS 375 m active fire detection data product.
+            Remote Sensing of Environment 143, 85–96.</li>
+        </ul>
+        <details class="columns">
+          <summary>What the columns mean</summary>
+          <dl>
+            <dt>harmonized, harmonized_fire_days</dt><dd>Fire-days on the VIIRS scale: VIIRS where it exists, MODIS times the scaling factor before that.</dd>
+            <dt>modis_raw, viirs_raw</dt><dd>Fire-days counted by each instrument before scaling (empty where it did not fly).</dd>
+            <dt>source</dt><dd>Which record a day comes from: VIIRS observed, MODIS scaled, or no observation.</dd>
+            <dt>fire-day</dt><dd>One 0.1° grid cell (about 10 km) with at least one detection on one local day (UTC+5:30).</dd>
+            <dt>usual, p10, p90</dt><dd>Median and 10th/90th percentiles of the same dates in earlier complete years.</dd>
+            <dt>start_10, halfway_50, end_90</dt><dd>Dates by which 10%, 50% and 90% of that season's fire-days had happened.</dd>
+            <dt>trend_pct_per_year, trend_p</dt><dd>Theil–Sen slope of yearly fire-days as % of the median year, and the Mann–Kendall p-value (below 0.05: a clear trend).</dd>
+          </dl>
+        </details>
       </div>
     </div>
   </section>
@@ -339,6 +424,9 @@
     generated clouds. State and district boundaries:
     geoBoundaries (Runfola et al. 2020, PLOS ONE), Open Database License; shown for reference
     only and not an authoritative depiction of any border.</p>
+  <p><strong>Not an official warning service.</strong> Satellites miss fires under cloud, smoke
+    and between passes, and recent days use near-real-time data. For an emergency, call 112
+    (India) or your local emergency number.</p>
   <p>Built for the NASA Space Apps Challenge 2026, Harmonization of MODIS and VIIRS Hot Spots.
     Parts of the code and text were drafted with an AI assistant (Claude) and reviewed by the team.
     <a class="link" href="https://github.com/JuwariyahAnam/burning-activity-calendar">Source code</a></p>

@@ -2,7 +2,8 @@
 // AI disclosure: drafted with Claude (Anthropic); reviewed by the team.
 import * as E from "./engine.js";
 import { lineChart, renderCalendar, calendarTable, barChart, showTip, fmt, pct, median,
-         COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
+         COLORS, MONTHS, MONTH_NAMES, seasonChart, timingChart, SEASON_COLORS } from "./viz.js";
+import * as S from "./season.js";
 import { createMap } from "./map.js";
 import { createGlobe } from "./globe3d.js";
 import { createMiniMap } from "./minimap.js";
@@ -10,8 +11,11 @@ import { loadHotspots, aggregate, intensity, redGradient } from "./hotspots.js";
 
 const $ = (id) => document.getElementById(id);
 // selection: { kind: "bbox", bbox } or { kind: "districts", ids: [...] }
-const state = { sel: null, method: "monthly", aquaOnly: false, viirsAll: false,
-                yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false };
+const DEFAULT_METHOD = "monthly";            // the team's chosen calibration
+const state = { sel: null, method: DEFAULT_METHOD, aquaOnly: false, viirsAll: false,
+                yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false,
+                compareYear: null, timingIdx: 0 };
+let season = null;                           // typical year for the current selection
 let hot = null, dotsKey = "";
 let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
 
@@ -44,6 +48,7 @@ async function load() {
                                : { kind: "bbox", bbox: [...meta.bbox] };
   renderRegionPickers();
   state.sel = defaultSel;
+  readUrl();
   $("sample-banner").hidden = !meta.sample;
   document.body.classList.toggle("has-banner", !!meta.sample);
   document.querySelectorAll(".region-name").forEach((n) => (n.textContent = meta.region));
@@ -241,6 +246,96 @@ function wireControls() {
   $("dl-monthly").addEventListener("click", downloadMonthly);
   $("dl-daily").addEventListener("click", downloadDaily);
   $("dl-cells").addEventListener("click", downloadCells);
+  $("dl-season").addEventListener("click", downloadSeason);
+  $("dl-timing").addEventListener("click", downloadTiming);
+  $("dl-districts").addEventListener("click", downloadDistricts);
+  $("share").addEventListener("click", (e) => { writeUrl(); copyText(viewUrl(), e.currentTarget, "Link copied"); });
+  $("copy-cite").addEventListener("click", (e) => copyText($("cite-view").textContent, e.currentTarget, "Citation copied"));
+  $("compare-year").addEventListener("change", (e) => {
+    state.compareYear = +e.target.value || null;
+    renderSeason(); writeUrl();
+  });
+  $("timing-season").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.timingIdx = +b.dataset.i; renderTiming();
+  });
+}
+
+// ------------------------------------------------- shareable view links
+// ?region=&area=d:1,2|b:s,w,n,e&from=&to=&cal=&aqua=1&viirs=all&compare=
+function readUrl() {
+  const q = new URLSearchParams(location.search);
+  const area = q.get("area") || "";
+  if (area.startsWith("d:") && districts) {
+    const n = districts.districts.length;
+    const ids = area.slice(2).split(",").map(Number).filter((i) => Number.isInteger(i) && i >= 0 && i < n);
+    if (ids.length) state.sel = { kind: "districts", ids };
+  } else if (area.startsWith("b:")) {
+    const v = area.slice(2).split(",").map(Number);
+    if (v.length === 4 && v.every(Number.isFinite) && v[0] < v[2] && v[1] < v[3]) state.sel = { kind: "bbox", bbox: v };
+  }
+  if (["monthly", "simple"].includes(q.get("cal"))) state.method = q.get("cal");
+  state.aquaOnly = q.get("aqua") === "1";
+  state.viirsAll = q.get("viirs") === "all";
+  const f = parseInt(q.get("from"), 10), t = parseInt(q.get("to"), 10);
+  if (f && t) { state.yearFrom = Math.min(f, t); state.yearTo = Math.max(f, t); }
+  if (parseInt(q.get("compare"), 10)) state.compareYear = parseInt(q.get("compare"), 10);
+  $("method").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === state.method));
+  $("aqua-only").checked = state.aquaOnly;
+  $("viirs-all").checked = state.viirsAll;
+}
+let allYears = [];
+function viewUrl() {
+  const q = new URLSearchParams();
+  if (current) q.set("region", current.slug);
+  if (state.sel !== defaultSel) {
+    q.set("area", state.sel.kind === "districts" ? `d:${state.sel.ids.join(",")}`
+                                                 : `b:${state.sel.bbox.join(",")}`);
+  }
+  if (allYears.length && (state.yearFrom !== allYears[0] || state.yearTo !== allYears.at(-1))) {
+    q.set("from", state.yearFrom); q.set("to", state.yearTo);
+  }
+  if (state.method !== DEFAULT_METHOD) q.set("cal", state.method);
+  if (state.aquaOnly) q.set("aqua", "1");
+  if (state.viirsAll) q.set("viirs", "all");
+  if (state.compareYear) q.set("compare", state.compareYear);
+  const qs = q.toString().replace(/%3A/g, ":").replace(/%2C/g, ",");
+  return `${location.origin}${location.pathname}${qs ? `?${qs}` : ""}`;
+}
+function writeUrl() {
+  try { history.replaceState(null, "", viewUrl().slice(location.origin.length) + location.hash); } catch { /* file:// */ }
+  renderCite();
+}
+async function copyText(text, button, done) {
+  const label = button.textContent;
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const t = Object.assign(document.createElement("textarea"), { value: text });
+    document.body.append(t); t.select(); document.execCommand("copy"); t.remove();
+  }
+  button.textContent = done;
+  setTimeout(() => (button.textContent = label), 1800);
+}
+const METHOD_NAME = { monthly: "one scaling factor per calendar month", simple: "one scaling factor" };
+function renderCite() {
+  if (!result) return;
+  const today = new Date().toLocaleDateString("en-CA");          // YYYY-MM-DD, local
+  $("cite-view").textContent = `Burning Activity Calendar (${new Date().getFullYear()}). Harmonized MODIS and VIIRS ` +
+    `fire-days for ${selName(state.sel)}, ${state.yearFrom}–${state.yearTo}; calibration: ` +
+    `${METHOD_NAME[state.method]}. Data: NASA FIRMS. NASA Space Apps Challenge 2026. ${viewUrl()} (accessed ${today}).`;
+}
+
+// how old the newest fire data is
+function renderFreshness() {
+  const lastDay = Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]);
+  const now = new Date();
+  const age = Math.round((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) -
+                          E.dayToDate(meta, lastDay).getTime()) / 86400000);
+  const el = $("freshness");
+  el.classList.toggle("stale", age > 3);
+  el.textContent = age > 3
+    ? `The newest fire data is from ${fmtDate(lastDay)}, ${age} days ago, so the figures for this month and the next two weeks may be out of date.`
+    : `Fire data up to ${fmtDate(lastDay)}. Recent days use near-real-time data.`;
 }
 
 function message(text) {
@@ -287,7 +382,10 @@ function update() {
     return;
   }
   const years = [...new Set(result.hMonths.map((m) => m.year))];
-  if (state.yearFrom == null) { state.yearFrom = years[0]; state.yearTo = years.at(-1); }
+  allYears = years;
+  if (state.yearFrom == null || !years.includes(state.yearFrom) || !years.includes(state.yearTo)) {
+    state.yearFrom = years[0]; state.yearTo = years.at(-1);
+  }
   for (const id of ["y-from", "y-to"]) {
     $(id).innerHTML = years.map((y) => `<option>${y}</option>`).join("");
   }
@@ -297,12 +395,114 @@ function update() {
 
 function renderAll() {
   if (!result) return;
+  season = S.seasonCurve(meta, result.harm, state.yearFrom, state.yearTo);
   renderMapDots();
   renderDistricts();
   renderFigures();
+  renderFreshness();
+  renderOutlook();
   renderCalendarBlock();
+  renderSeason();
+  renderTiming();
   renderMtd();
   renderTrust();
+  writeUrl();
+}
+
+// ------------------------------------------------- outlook (early warning)
+const dl = (j) => S.doyLabel(j);
+function renderOutlook() {
+  const ok = season && season.ref.length >= 3;
+  $("outlook-block").hidden = !ok;
+  if (!ok) return;
+  const o = S.outlook(season, 14);
+  const verb = { rises: "usually rises", falls: "usually falls", steady: "usually stays at about the same level",
+                 quiet: "is usually quiet" }[o.direction];
+  let lead = o.direction === "quiet"
+    ? `The next two weeks (${dl(o.next.from)} – ${dl(o.next.to)}) are usually quiet here.`
+    : `Burning here <b>${verb}</b> over the next two weeks (${dl(o.next.from)} – ${dl(o.next.to)}).`;
+  if (o.period?.now) lead += ` These days fall in the usual peak, ${dl(o.period.start)} – ${dl(o.period.end)}.`;
+  else if (o.period) lead += ` The next usual peak starts around ${dl(o.period.start)}, in about ${o.period.wait} days.`;
+  $("outlook-lead").innerHTML = lead;
+
+  const diff = o.last.median > 0 ? 100 * (o.last.value / o.last.median - 1) : NaN;
+  const cls = diff > 10 ? "up" : diff < -10 ? "down" : "";
+  const cards = [
+    `<div class="card glass"><h4>Usual for ${dl(o.next.from)} – ${dl(o.next.to)}</h4>
+       <div class="v">${fmt(o.next.median)}<small>fire-days</small></div>
+       <p class="k">In most years between ${fmt(o.next.low)} and ${fmt(o.next.high)} (${o.next.years} years).</p></div>`,
+    `<div class="card glass"><h4>Last 14 days, to ${dl(o.last.to)}</h4>
+       <div class="v ${cls}">${fmt(o.last.value)}<small>${Number.isFinite(diff) ? `${pct(diff)} against usual` : "fire-days"}</small></div>
+       <p class="k">Usual for these dates: ${fmt(o.last.median)}. More burning than in ${o.last.below} of ${o.last.years} earlier years.</p></div>`,
+  ];
+  if (o.season && Number.isFinite(o.season.done)) {
+    const sd = o.season, sdiff = sd.usual > 0 ? 100 * (sd.sofar / sd.usual - 1) : NaN;
+    const fill = Math.min(100, 100 * sd.done * (sd.usual > 0 ? sd.sofar / sd.usual : 0));
+    cards.push(`<div class="card glass"><h4>Season ${dl(sd.start)} – ${dl(sd.end)}</h4>
+       <div class="v">${fmt(100 * sd.done)}%<small>usually burned by now</small></div>
+       <div class="meter" title="Bar: this season so far. Line: where a usual season is by this date."><span style="width:${fill}%"></span><em style="left:${100 * sd.done}%"></em></div>
+       <p class="k">This season so far: ${fmt(sd.sofar)} fire-days, ${pct(sdiff)} against the usual ${fmt(sd.usual)} by this date.</p></div>`);
+  } else {
+    cards.push(`<div class="card glass"><h4>Season</h4><div class="v">Off season</div>
+       <p class="k">${o.period ? `The next usual peak is ${dl(o.period.start)} – ${dl(o.period.end)}.` : "No clear burning season in this area."}</p></div>`);
+  }
+  $("outlook").innerHTML = cards.join("");
+}
+
+// ------------------------------------------------- typical year
+function renderSeason() {
+  const ok = season && season.ref.length >= 3;
+  $("season-block").hidden = !ok;
+  if (!ok) return;
+  const ys = [...season.ref].reverse();
+  if (state.compareYear && !season.yearLine(state.compareYear)) state.compareYear = null;
+  $("compare-year").innerHTML = `<option value="">No other year</option>` +
+    [...new Set([...ys, season.current.year - 1])].filter((y) => season.yearLine(y) && y !== season.current.year)
+      .sort((a, b) => b - a).map((y) => `<option value="${y}">${y}</option>`).join("");
+  $("compare-year").value = state.compareYear || "";
+  const cy = state.compareYear;
+  seasonChart($("season-svg"), {
+    med: season.med, p10: season.p10, p90: season.p90, periods: season.periods, label: dl,
+    current: season.current, compare: cy ? { year: cy, values: season.yearLine(cy) } : null,
+  });
+  $("season-legend").innerHTML = [
+    `<li><i style="background:${SEASON_COLORS.usual}"></i>Usual (median of ${season.ref.length} years)</li>`,
+    `<li><i class="band" style="background:${SEASON_COLORS.usual}"></i>Most years</li>`,
+    `<li><i style="background:${SEASON_COLORS.now}"></i>${season.current.year} so far</li>`,
+    cy ? `<li><i class="dash" style="color:${SEASON_COLORS.compare}"></i>${cy}</li>` : "",
+    season.periods.length ? `<li><i class="band" style="background:rgba(241,127,58,0.35)"></i>Critical periods</li>` : "",
+  ].join("");
+  const ps = [...season.periods].sort((a, b) => a.start - b.start);
+  const days = ps.reduce((n, p) => n + p.days, 0);
+  $("critical").innerHTML = ps.length
+    ? `<p>Critical periods, when usual burning is at least a quarter of its yearly peak: ${days} days that hold ${fmt(100 * ps.reduce((t, p) => t + p.share, 0))}% of a typical year's burning.</p>` +
+      ps.map((p) => `<span class="period"><b>${dl(p.start)} – ${dl(p.end)}</b>: ${fmt(100 * p.share)}% of the year, busiest around ${dl(p.peak)}</span>`).join("")
+    : "";
+}
+
+// ------------------------------------------------- season timing
+let timing = [];
+function renderTiming() {
+  timing = season && season.ref.length >= 3 ? S.seasonTiming(season).filter((t) => t.rows.length >= 6) : [];
+  $("timing-block").hidden = !timing.length;
+  if (!timing.length) return;
+  timing.sort((a, b) => a.window.start - b.window.start);
+  state.timingIdx = Math.min(state.timingIdx, timing.length - 1);
+  $("timing-season").hidden = timing.length < 2;
+  $("timing-season").innerHTML = timing.map((t, i) =>
+    `<button type="button" data-i="${i}" aria-pressed="${i === state.timingIdx}">${t.name}</button>`).join("");
+  const t = timing[state.timingIdx], rows = t.rows;
+  const clear = (p) => (Number.isFinite(p) && p < 0.05 ? "a clear trend" : "not a clear trend");
+  const pv = (p) => (Number.isFinite(p) ? `p = ${p < 0.001 ? "<0.001" : fmt(p, 3)}` : "too few years");
+  const sh = t.midShift.perDecade;
+  const shift = Math.abs(sh) < 1
+    ? "has stayed about the same"
+    : `has moved <b>${fmt(Math.abs(sh), 1)} days ${sh > 0 ? "later" : "earlier"} per decade</b>`;
+  const tt = t.totalTrend.pctPerYear;
+  $("timing-summary").innerHTML = `Since ${rows[0].year}, the halfway date of the ${t.name} season ${shift} ` +
+    `(${clear(t.midShift.p)}, ${pv(t.midShift.p)}). The season's total burning ` +
+    (Number.isFinite(tt) ? `changed by <b>${pct(tt)} a year</b> (${clear(t.totalTrend.p)}, ${pv(t.totalTrend.p)}).` : "has too few years for a trend.");
+  timingChart($("timing-svg"), { season: t, trend: S.theilSen(rows.map((r) => [r.year, r.mid])) });
 }
 
 // red dots on the map for the years shown (recomputed only when the years change)
@@ -426,8 +626,18 @@ function describeDistrict(i) {
   return `<div class="r"><span>${label}, ${dStats.year}</span><b>${fmt(s.now)} fire-days</b></div>` +
     `<div class="r"><span>Usual for these days</span><b>${fmt(s.usual)}</b></div>` +
     (Number.isFinite(diff) ? `<div class="r"><span>Change</span><b>${pct(diff)}</b></div>` : "") +
-    `<div class="r"><span>Average per year</span><b>${fmt(s.perYear)}</b></div>`;
+    `<div class="r"><span>Average per year</span><b>${fmt(s.perYear)}</b></div>` +
+    (Number.isFinite(trendOf(s).pct) ? `<div class="r"><span>Long-term trend</span><b>${pct(trendOf(s).pct)} a year</b></div>` : "");
 }
+
+const trendCache = new WeakMap();
+function trendOf(s) {
+  if (!trendCache.has(s)) trendCache.set(s, S.yearlyTrend(s.series || []));
+  return trendCache.get(s);
+}
+const trendCell = (t) => (Number.isFinite(t.pct)
+  ? `<td class="py trend ${t.p < 0.05 ? "" : "flat"}" title="${t.p < 0.05 ? "Clear trend" : "Not a clear trend"} (Mann-Kendall p = ${fmt(t.p, 3)})">${t.pct > 0 ? "+" : ""}${fmt(t.pct, 1)}%</td>`
+  : '<td class="py">–</td>');
 
 function renderDistricts() {
   dStats = computeDistrictStats();
@@ -446,14 +656,14 @@ function renderDistricts() {
   const top = Math.max(1, ...list.map((s) => Math.max(s.now || 0, s.usual || 0)));
   const selIds = state.sel.kind === "districts" ? new Set(state.sel.ids) : new Set();
   $("districts-table").innerHTML = `<thead><tr><th>District</th><th class="barcell">This month so far
-      <span class="muted">(bar) and usual (line)</span></th><th>Fire-days</th><th>Usual</th><th>Change</th><th class="py">Per year</th></tr></thead><tbody>${
+      <span class="muted">(bar) and usual (line)</span></th><th>Fire-days</th><th>Usual</th><th>Change</th><th class="py">Per year</th><th class="py" title="Theil-Sen slope of yearly fire-days, as % of the median year. Faded: not a clear trend.">Trend a year</th></tr></thead><tbody>${
     shown.map((s) => {
       const diff = s.usual > 0 ? 100 * (s.now / s.usual - 1) : NaN;
       const cls = diff > 10 ? "up" : diff < -10 ? "down" : "";
       return `<tr tabindex="0" data-id="${s.id}" class="${selIds.size === 1 && selIds.has(s.id) ? "on" : ""}">
         <td>${s.d.name}<span class="st">${s.d.state}</span></td>
         <td class="barcell"><div class="bar"><span style="width:${(100 * (s.now || 0)) / top}%"></span>${Number.isFinite(s.usual) ? `<em style="left:${(100 * s.usual) / top}%"></em>` : ""}</div></td>
-        <td>${fmt(s.now)}</td><td>${fmt(s.usual)}</td><td class="${cls}">${pct(diff)}</td><td class="py">${fmt(s.perYear)}</td></tr>`;
+        <td>${fmt(s.now)}</td><td>${fmt(s.usual)}</td><td class="${cls}">${pct(diff)}</td><td class="py">${fmt(s.perYear)}</td>${trendCell(trendOf(s))}</tr>`;
     }).join("")}</tbody>`;
   $("districts-table").querySelectorAll("tbody tr").forEach((tr) => {
     const pick = () => {
@@ -495,6 +705,32 @@ function downloadDaily() {
     lines.push([iso(harm.start + i), num(harm.h[i]), src[harm.src[i]], num(daily.modis[i]), num(daily.viirs[i])].join(","));
   }
   save("burning_calendar_daily.csv", header() + "date,harmonized,source,modis_raw,viirs_raw\n" + lines.join("\n"));
+}
+function downloadSeason() {
+  if (!season) return;
+  const c = season.current.values || [];
+  const lines = [...Array(365).keys()].map((j) => [j + 1, dl(j), num(season.med[j]), num(season.p10[j]),
+    num(season.p90[j]), j <= season.current.lastDoy ? num(c[j]) : ""].join(","));
+  save("typical_year.csv", header() + `# 15-day average of harmonized fire-days per day; usual = median of ${season.ref.length} complete years (${season.ref[0]}-${season.ref.at(-1)}).\n` +
+    `day_of_year,date,usual,p10,p90,this_year_${season.current.year}\n` + lines.join("\n"));
+}
+function downloadTiming() {
+  if (!timing.length) return;
+  const lines = timing.flatMap((t) => t.rows.map((r) => [`"${t.name}"`, r.year, t.label(r.start), t.label(r.mid),
+    t.label(r.end), t.label(r.peak), num(r.total)].join(",")));
+  save("season_timing.csv", header() + "season,year,start_10,halfway_50,end_90,busiest_week,fire_days\n" + lines.join("\n"));
+}
+function downloadDistricts() {
+  if (!dStats) return;
+  const focus = new Set(districts.focusIds);
+  const lines = dStats.districts.filter((s) => districts.districts[s.id].cells > 0 && (!focus.size || focus.has(s.id)))
+    .map((s) => {
+      const d = districts.districts[s.id], t = trendOf(s);
+      const diff = s.usual > 0 ? 100 * (s.now / s.usual - 1) : NaN;
+      return [`"${d.name}"`, `"${d.state}"`, num(s.now), num(s.usual), num(diff), num(s.perYear), num(t.pct), num(t.p)].join(",");
+    });
+  save("districts.csv", header() + `# month so far: ${MONTH_NAMES[dStats.month - 1]} 1-${dStats.day}, ${dStats.year}; usual = median of earlier years for the same days.\n` +
+    "district,state,fire_days_month_so_far,usual,change_pct,fire_days_per_year,trend_pct_per_year,trend_p\n" + lines.join("\n"));
 }
 function downloadCells() {
   const sel = selOpts(state.sel), names = ["Terra", "Aqua", "SNPP", "NOAA20"];

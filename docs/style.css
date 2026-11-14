@@ -501,3 +501,54 @@ footer p { max-width: 52rem; margin: 0 0 0.8rem; }
 .loading { position: fixed; inset: 0; display: grid; place-items: center; z-index: 70;
            background: var(--night); color: var(--ink-2); transition: opacity .5s; }
 .loading.done { opacity: 0; pointer-events: none; }
+
+/* ------------------------------------------- outlook, season, share, cite */
+.selection-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+                 gap: 0.6rem 1.2rem; margin-top: 1.4rem; }
+.selection-row .selection { margin: 0; }
+.btn.share { padding: 0.55rem 1rem; font-size: 0.86rem; }
+.freshness { margin: 0.5rem 0 0; font-size: 0.82rem; color: var(--ink-3); }
+.freshness.stale { color: #f3c27a; }
+
+.outlook-lead { margin: 0 0 1.2rem; font-size: clamp(1.1rem, 1.8vw, 1.35rem); max-width: 46rem; }
+.outlook-lead b { font-weight: 600; }
+.outlook { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.outlook .card { padding: 1.3rem 1.3rem 1.2rem; }
+.outlook .card h4 { margin: 0 0 0.6rem; font-size: 0.86rem; font-weight: 500; color: var(--ink-2); }
+.outlook .v { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 700; font-stretch: 85%; line-height: 1.05; }
+.outlook .v small { font-size: 0.9rem; font-weight: 500; color: var(--ink-2); font-stretch: 100%; margin-left: 0.35rem; }
+.outlook .k { margin: 0.55rem 0 0; color: var(--ink-2); font-size: 0.88rem; }
+.outlook .up { color: #f39a6b; }
+.outlook .down { color: #7fb0f0; }
+.meter { position: relative; height: 8px; border-radius: 4px; margin-top: 0.9rem;
+         background: rgba(140,180,255,0.14); overflow: hidden; }
+.meter span { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--harm); }
+.meter em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+@media (max-width: 860px) { .outlook { grid-template-columns: 1fr; } }
+
+.legend.static li { opacity: 1; }
+.legend.static i.dash { background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 9px); }
+.legend.static i.band { height: 10px; opacity: 0.6; }
+.critical { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+.critical p { margin: 0 0.4rem 0 0; color: var(--ink-2); font-size: 0.92rem; max-width: 40rem; }
+.critical .period { padding: 0.45rem 0.8rem; border-radius: 999px; font-size: 0.86rem;
+                    background: rgba(241,127,58,0.1); border: 1px solid rgba(241,127,58,0.35); }
+.critical .period b { font-weight: 600; }
+.timing-summary { margin: 0 0 1rem; color: var(--ink-2); max-width: 46rem; }
+.timing-summary b { color: var(--ink); font-weight: 600; }
+#timing-season button { font-size: 0.82rem; }
+table.districts td.trend.flat { color: var(--ink-3); }
+
+.cite { margin-top: 2rem; padding-top: 1.6rem; border-top: 1px solid var(--line); }
+.cite h3 { margin: 0 0 0.4rem; }
+.cite-text { margin: 0.4rem 0 0.8rem; padding: 0.9rem 1rem; border-radius: 12px; font-size: 0.9rem;
+             background: rgba(3,9,21,0.5); border: 1px solid var(--glass-edge); overflow-wrap: anywhere; }
+.cite-list { margin: 0.4rem 0 0; padding-left: 1.1rem; color: var(--ink-2); }
+.cite-list li { margin: 0.3rem 0; overflow-wrap: anywhere; }
+details.columns { margin-top: 1.2rem; }
+details.columns summary { cursor: pointer; color: var(--accent); }
+details.columns dl { display: grid; grid-template-columns: minmax(9rem, max-content) 1fr; gap: 0.4rem 1rem;
+                     font-size: 0.86rem; margin: 0.8rem 0 0; }
+details.columns dt { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+details.columns dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 600px) { details.columns dl { grid-template-columns: 1fr; } details.columns dd { margin-bottom: 0.5rem; } }
