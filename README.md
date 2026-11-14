@@ -10,12 +10,23 @@ into one consistent burning calendar for a chosen area.
 ```
 pip install -r requirements.txt
 
-# 1. put your FIRMS CSV downloads (MODIS and VIIRS) in raw/
+# 1. get the data (free MAP_KEY: https://firms.modaps.eosdis.nasa.gov/api/map_key/)
+#    PowerShell:  $env:FIRMS_MAP_KEY = "your key"
+#    macOS/Linux: export FIRMS_MAP_KEY="your key"
+python fetch_firms.py                  # Punjab & Haryana, 2001 to today -> raw/
+#    (or put FIRMS Archive Download CSVs in raw/ instead)
+
+# 2. compact the data for the app
 python prepare.py "raw/*.csv"          # writes data/cell_days.csv.gz
 
-# 2. start the app
+# 3. start the app
 streamlit run app.py
 ```
+
+`fetch_firms.py` stays under the API limit of 5,000 transactions per 10
+minutes (one per day of data), so a full 20-year download takes roughly
+30-45 minutes. If it stops, run it again; finished chunks are cached in
+`raw/api_cache/`. Never commit your MAP_KEY.
 
 To deploy, push this folder (including `data/cell_days.csv.gz`) to a public
 GitHub repository and point Streamlit Community Cloud at `app.py`.
@@ -39,6 +50,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 
 | File | Purpose |
 |---|---|
+| `fetch_firms.py` | Downloads MODIS and VIIRS hotspots for an area from the FIRMS API |
 | `harmonize.py` | All data and harmonization logic |
 | `prepare.py` | Raw FIRMS CSVs to a compact cell-day file |
 | `app.py` | Streamlit app |
