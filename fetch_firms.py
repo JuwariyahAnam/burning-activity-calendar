@@ -21,7 +21,8 @@ How it works
 - Each day counts as one API transaction, with a limit of 5,000 per
   10 minutes, so a 20-year download takes at least about 30 minutes.
   Six requests run at once so the limit, not server latency, sets the
-  pace. The script pauses automatically when the limit is close.
+  pace. The script pauses automatically when the limit is close. The
+  limit belongs to the MAP_KEY, so run one download at a time.
 - Every chunk is cached in raw/api_cache/. If the script stops, run it
   again and it continues where it left off.
 - Order: MODIS, then VIIRS S-NPP, then VIIRS NOAA-20 (from 2026 only by
@@ -53,27 +54,56 @@ PUNJAB_HARYANA = "73.8,27.6,77.6,32.6"          # west,south,east,north
 LIMIT, SAFETY = 5000, 300                        # transactions per 10 minutes
 
 
-def get(url, retries=6):
-    """GET with retries. Connection resets and timeouts are common on long
-    runs; any network error is retried with a growing pause."""
+WAITS = (15, 30, 60, 120, 180, 300, 300)              # about 17 minutes in all
+_said, _said_lock = {}, threading.Lock()
+
+
+def say_once(text, every=60):
+    """Print a message once per minute, not once per worker."""
+    with _said_lock:
+        if time.time() - _said.get(text, 0) > every:
+            _said[text] = time.time()
+            print(text)
+
+
+def get(url, retries=len(WAITS) + 1):
+    """GET with retries. Connection resets, timeouts and busy-server replies
+    are common on long runs; they are retried with a growing pause. A reply
+    saying the MAP_KEY limit was reached raises LimitReached instead."""
     req = urllib.request.Request(
         url, headers={"User-Agent": "burning-activity-calendar/1.0 (Space Apps 2026)"})
     for attempt in range(retries):
         try:
             with urllib.request.urlopen(req, timeout=180) as r:
                 return r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as err:
+            try:
+                body = err.read().decode("utf-8", "replace")[:300].lower()
+            except Exception:
+                body = ""
+            if err.code == 429 or "transaction" in body or "limit" in body:
+                raise LimitReached(f"HTTP {err.code}") from None
+            if err.code in (400, 401) and "key" in body:
+                raise FirmsError(f"FIRMS rejected the MAP_KEY (HTTP {err.code}). "
+                                 "Check FIRMS_MAP_KEY.") from None
+            what = f"HTTP {err.code}"
         except (OSError, http.client.HTTPException) as err:
-            # OSError covers URLError, HTTPError, timeouts and connection
-            # resets; HTTPException covers incomplete or malformed replies.
-            if attempt == retries - 1:
-                raise NetworkError(f"{type(err).__name__}: {err}") from None
-            wait = (15, 30, 60, 90, 120)[min(attempt, 4)]
-            print(f"  network error ({type(err).__name__}); retry "
-                  f"{attempt + 1}/{retries - 1} in {wait}s")
-            time.sleep(wait)
+            # OSError covers URLError, timeouts and connection resets;
+            # HTTPException covers incomplete or malformed replies.
+            what = type(err).__name__
+        if attempt == retries - 1:
+            raise NetworkError(f"FIRMS kept failing ({what})")
+        wait = WAITS[min(attempt, len(WAITS) - 1)]
+        say_once(f"  FIRMS busy or unreachable ({what}); retrying in {wait}s "
+                 f"(try {attempt + 1}/{retries - 1}, normal, leave it running)")
+        time.sleep(wait)
 
 
 class NetworkError(Exception):
+    pass
+
+
+class LimitReached(Exception):
     pass
 
 
@@ -82,12 +112,20 @@ class Budget:
     while one thread pauses for the limit, the others wait too."""
 
     def __init__(self, key):
-        self.key, self.used, self.window_start = key, 0, time.time()
+        self.key, self.window_start, self.gen = key, time.time(), 0
         self.lock = threading.Lock()
+        # Count what this MAP_KEY has already used in the last 10 minutes:
+        # an earlier run, or another window downloading with the same key.
+        server = self.server_count()
+        self.used = self.synced = server or 0
+        if server:
+            print(f"This MAP_KEY already used {server:,} of its {LIMIT:,} transactions "
+                  "in the last 10 minutes (an earlier or parallel run); counting those.")
 
     def server_count(self):
         try:
-            s = json.loads(get(f"{BASE}/mapserver/mapkey_status/?MAP_KEY={self.key}"))
+            s = json.loads(get(f"{BASE}/mapserver/mapkey_status/?MAP_KEY={self.key}",
+                               retries=2))
             return int(s.get("current_transactions", 0))
         except Exception:
             return None
@@ -95,7 +133,13 @@ class Budget:
     def spend(self, n):
         with self.lock:
             if time.time() - self.window_start > 600:
-                self.used, self.window_start = 0, time.time()
+                self.used = self.synced = 0
+                self.window_start = time.time()
+            if self.used - self.synced >= 500:      # another run may share the key
+                server = self.server_count()
+                if server is not None:
+                    self.used = max(self.used, server)
+                self.synced = self.used
             if self.used + n > LIMIT - SAFETY:
                 server = self.server_count()
                 if server is None or server + n > LIMIT - SAFETY:
@@ -103,14 +147,21 @@ class Budget:
                     print(f"  10-minute limit reached; pausing {wait / 60:.1f} min "
                           "(normal, leave it running)")
                     time.sleep(wait)
-                self.used, self.window_start = 0, time.time()
+                    self.gen += 1
+                self.used = self.synced = 0
+                self.window_start = time.time()
             self.used += n
 
-    def pause_full_window(self):
+    def pause_full_window(self, seen_gen):
+        """Wait out the 10-minute window once, however many workers hit it."""
         with self.lock:
-            print("  FIRMS says the limit was reached; pausing 10 min")
+            if self.gen != seen_gen:            # another worker already waited
+                return
+            print("  FIRMS says the 10-minute limit was reached; pausing 10 min "
+                  "(normal, leave it running)")
             time.sleep(605)
-            self.used, self.window_start = 0, time.time()
+            self.used = self.synced = 0
+            self.window_start, self.gen = time.time(), self.gen + 1
 
 
 def availability(key):
@@ -165,8 +216,13 @@ def chunks(lo, hi, step):
 
 def fetch_one(product, day, n, key, bbox, out, budget):
     while True:
+        gen = budget.gen
         budget.spend(n)
-        text = get(f"{BASE}/api/area/csv/{key}/{product}/{bbox}/{n}/{day}")
+        try:
+            text = get(f"{BASE}/api/area/csv/{key}/{product}/{bbox}/{n}/{day}")
+        except LimitReached:
+            budget.pause_full_window(gen)
+            continue
         first_line = text.lstrip().split("\n", 1)[0].lower()
         if not text.strip() or first_line.startswith("latitude"):
             tmp = out.with_suffix(".part")
@@ -175,7 +231,7 @@ def fetch_one(product, day, n, key, bbox, out, budget):
             return n
         msg = text.strip()[:200]
         if "transaction" in msg.lower() or "limit" in msg.lower():
-            budget.pause_full_window()
+            budget.pause_full_window(gen)
             continue
         raise FirmsError(f"FIRMS returned an error for {product} {day}: {msg}")
 
