@@ -83,7 +83,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 - NASA FIRMS active fire data: MODIS Collection 6.1 and VIIRS 375 m
   (S-NPP, NOAA-20). https://firms.modaps.eosdis.nasa.gov/
 - Libraries: Streamlit, pandas, NumPy, Plotly, Folium, streamlit-folium.
-- Website: NASA Blue Marble and Black Marble Earth imagery (public domain) via the three-globe package on jsDelivr; Natural Earth land outlines (public domain, fallback) via the world-atlas package; base map tiles © OpenStreetMap contributors © CARTO; Instrument Sans font (Google Fonts, SIL Open Font License).
+- Website: NASA Blue Marble Earth imagery (public domain, colour-graded, with generated clouds) via the three-globe package on jsDelivr; Natural Earth land outlines (public domain, fallback) via the world-atlas package; base map tiles © OpenStreetMap contributors © CARTO; Instrument Sans font (Google Fonts, SIL Open Font License).
 - TODO: list every other dataset, library and reference you use.
 
 ## Use of AI

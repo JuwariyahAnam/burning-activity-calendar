@@ -5,12 +5,10 @@ import { ember, reduceMotion, MONTH_NAMES } from "./viz.js";
 import { dayToDate } from "./engine.js";
 
 const RAD = Math.PI / 180;
-// NASA Blue Marble (day) and Black Marble (night lights), public domain, as
-// redistributed in the three-globe package. Two mirrors each, tried in order.
+// NASA Blue Marble, public domain, as redistributed in the three-globe
+// package; used for continent shapes and terrain. Two mirrors, tried in order.
 const DAY_URLS = ["https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg",
                   "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"];
-const NIGHT_URLS = ["https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg",
-                    "https://unpkg.com/three-globe/example/img/earth-night.jpg"];
 // Fallback if the imagery can't load: Natural Earth land outlines via world-atlas
 const LAND_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json";
 const TEX_W = 2048, TEX_H = 1024;
@@ -109,28 +107,76 @@ function landMask(polys, W = 2048, H = 1024) {
   return { mask, W, H };
 }
 
-// Sun direction in view space: upper left, mostly toward the viewer.
-const SUN = (() => { const L = [-0.55, 0.42, 0.72], k = Math.hypot(...L); return L.map((v) => v / k); })();
 
-// Render the globe once into an image. With imagery: sunlit Blue Marble, a soft
-// terminator into Black Marble city lights, sun glint on water and atmosphere at
-// the rim. Without: the land-outline or graticule fallback below.
-function renderGlobe(R, basis, land, tex) {
-  if (tex?.day) return renderRealGlobe(R, basis, tex);
-  return renderSimpleGlobe(R, basis, land);
+// Sun direction in view space: upper left, mostly toward the viewer.
+const SUN = (() => { const L = [-0.84, 0.38, 0.4], k = Math.hypot(...L); return L.map((v) => v / k); })();
+
+// ---------------------------------------------------------- stylized Earth
+// A cinematic, art-directed Earth: teal-blue oceans, muted teal land, swirling
+// procedural clouds, cyan atmosphere on the sunlit limb and a deep navy night.
+// NASA Blue Marble supplies the continents and terrain variation; without it,
+// Natural Earth land outlines are used.
+const PAL = {
+  oceanDark: [2, 14, 36], oceanLit: [20, 84, 150], shallow: [30, 124, 164],
+  landDark: [8, 32, 42], landLit: [50, 122, 114], dryLit: [98, 136, 114],
+  cloudDark: [14, 34, 66], cloudLit: [228, 242, 255], haze: [84, 184, 255],
+};
+const mix3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+// 3D value noise and fractal sum, seeded so the clouds look the same every visit
+const PERM = (() => {
+  const p = new Uint8Array(512), v = [...Array(256).keys()];
+  let seed = 1337;
+  for (let i = 255; i > 0; i--) {
+    seed = (seed * 16807) % 2147483647;
+    const j = seed % (i + 1); [v[i], v[j]] = [v[j], v[i]];
+  }
+  for (let i = 0; i < 512; i++) p[i] = v[i & 255];
+  return p;
+})();
+const RND = Float32Array.from({ length: 256 }, (_, i) => PERM[i] / 255);
+function vnoise(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  const X = xi & 255, Y = yi & 255, Z = zi & 255;
+  const h = (a, b, c) => RND[PERM[PERM[PERM[a] + b] + c]];
+  const X1 = (X + 1) & 255, Y1 = (Y + 1) & 255, Z1 = (Z + 1) & 255;
+  const x00 = h(X, Y, Z) + (h(X1, Y, Z) - h(X, Y, Z)) * u;
+  const x10 = h(X, Y1, Z) + (h(X1, Y1, Z) - h(X, Y1, Z)) * u;
+  const x01 = h(X, Y, Z1) + (h(X1, Y, Z1) - h(X, Y, Z1)) * u;
+  const x11 = h(X, Y1, Z1) + (h(X1, Y1, Z1) - h(X, Y1, Z1)) * u;
+  const y0 = x00 + (x10 - x00) * v, y1 = x01 + (x11 - x01) * v;
+  return y0 + (y1 - y0) * w;
+}
+function fbm(x, y, z, oct = 5) {
+  let a = 0.5, f = 1, s = 0;
+  for (let i = 0; i < oct; i++) { s += a * vnoise(x * f, y * f, z * f); f *= 2.03; a *= 0.5; }
+  return s / (1 - 0.5 ** oct);
+}
+// Cloud cover at a point on the unit sphere: warped noise, banded by latitude
+function clouds(P0, P1, P2, lat) {
+  const q = fbm(P0 * 1.9 + 5.2, P1 * 1.9 + 1.3, P2 * 1.9, 3);
+  const c = fbm(P0 * 4.2 + q * 2.8, P1 * 4.2 + q * 1.7, P2 * 4.2 - q * 2.2, 6);
+  const belts = 0.8 + 0.2 * Math.cos(lat * RAD * 3.2);       // storm tracks and the tropics
+  return smooth(0.45, 0.74, c * belts + 0.06);
 }
 
-function renderRealGlobe(R, basis, { day, night }) {
+function renderGlobe(R, basis, land, tex) {
+  if (tex?.day || land) return renderStylizedGlobe(R, basis, land, tex?.day);
+  return renderSimpleGlobe(R, basis, null);
+}
+
+function renderStylizedGlobe(R, basis, land, day) {
   const size = Math.ceil(R * 2);
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
   const img = g.createImageData(size, size), d = img.data;
   const { e, n, f } = basis, L = SUN;
-  // half vector between sun and viewer, for the specular glint
   const H = [L[0], L[1], L[2] + 1], hk = Math.hypot(...H);
   H.forEach((v, i) => (H[i] = v / hk));
-  const dc = [0, 0, 0], nc = [0, 0, 0];
+  const tc = [0, 0, 0];
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
       const nx = (px + 0.5 - R) / R, ny = (R - py - 0.5) / R, d2 = nx * nx + ny * ny;
@@ -140,29 +186,47 @@ function renderRealGlobe(R, basis, { day, night }) {
       const P2 = nx * e[2] + ny * n[2] + nz * f[2];
       const lat = Math.asin(Math.max(-1, Math.min(1, P2))) / RAD;
       const lon = Math.atan2(P1, P0) / RAD;
-      sample(day, lon, lat, dc);
+      // surface: water or land, plus brightness and dryness for variety
+      let water, lum, dry;
+      if (day) {
+        sample(day, lon, lat, tc);
+        water = tc[2] > tc[0] + 12 && tc[2] >= tc[1] && tc[0] + tc[1] + tc[2] < 260;
+        lum = (0.3 * tc[0] + 0.59 * tc[1] + 0.11 * tc[2]) / 255;
+        dry = Math.max(0, Math.min(1, (tc[0] - tc[1] * 0.85) / 60));
+      } else {
+        const mx = Math.min(land.W - 1, Math.floor(((lon + 180) / 360) * land.W));
+        const my = Math.min(land.H - 1, Math.floor(((90 - lat) / 180) * land.H));
+        water = !land.mask[my * land.W + mx];
+        lum = 0.3 + 0.35 * fbm(P0 * 6, P1 * 6, P2 * 6, 3);
+        dry = Math.max(0, 1 - Math.abs(lat - 24) / 14) * 0.6;   // subtropical deserts
+      }
+      if (Math.abs(lat) > 72 && !water) { dry = 0; lum = 0.9; }  // ice
       const ndl = nx * L[0] + ny * L[1] + nz * L[2];
-      const lit = smooth(-0.1, 0.25, ndl);                  // 0 night, 1 day
-      const diffuse = 0.06 + 1.0 * Math.max(0, ndl) ** 0.75;
-      let cr = dc[0] * diffuse, cg = dc[1] * diffuse, cb = dc[2] * diffuse;
-      // city lights on the night side
-      if (night && lit < 1) {
-        sample(night, lon, lat, nc);
-        const k = (1 - lit) * 1.15;
-        cr += nc[0] * k; cg += nc[1] * k * 0.92; cb += nc[2] * k * 0.7;
-      }
-      // sun glint where the surface is water (dark, blue-dominant pixels)
-      const water = dc[2] > dc[0] + 12 && dc[2] >= dc[1] && dc[0] + dc[1] + dc[2] < 260;
+      const light = 0.04 + 1.0 * Math.max(0, ndl) ** 0.9;
+      let col;
       if (water) {
-        const s = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]) ** 60 * 0.55 * lit;
-        cr += 255 * s; cg += 245 * s; cb += 230 * s;
+        col = mix3(PAL.oceanDark, mix3(PAL.oceanLit, PAL.shallow, Math.min(1, lum * 1.6)), light);
+      } else {
+        const lit = mix3(PAL.landLit, PAL.dryLit, dry);
+        col = mix3(PAL.landDark, lit.map((v) => v * (0.75 + 0.6 * lum)), light);
       }
-      // atmosphere: thicker toward the rim, brighter on the sunlit side
-      const rim = (1 - nz) ** 2.4;
-      const a = Math.min(0.9, rim * (0.25 + 0.95 * smooth(-0.35, 0.6, ndl)) + 0.05 * lit);
-      cr += (110 - cr) * a; cg += (175 - cg) * a; cb += (255 - cb) * a;
+      // clouds, lit by the sun, with a slight shadow
+      const cl = clouds(P0, P1, P2, lat) * 0.9;
+      col = mix3(col, mix3(PAL.cloudDark, PAL.cloudLit, Math.min(1, light * 1.05)), cl);
+      // soft sun glint on open water
+      if (water) {
+        const s = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]) ** 40 * 0.35 * (1 - cl);
+        col = col.map((v) => v + 255 * s);
+      }
+      // night side falls to deep navy
+      const night = smooth(-0.25, 0.15, ndl);
+      col = mix3([1, 6, 18], col, 0.14 + 0.86 * night);
+      // atmosphere: cyan haze, strongest at the sunlit rim
+      const rim = (1 - nz) ** 2.2;
+      const a = Math.min(0.92, 0.025 + rim * (0.12 + 1.0 * smooth(-0.3, 0.5, ndl)));
+      col = mix3(col, PAL.haze, a);
       const k = (py * size + px) * 4;
-      d[k] = cr; d[k + 1] = cg; d[k + 2] = cb;
+      d[k] = col[0]; d[k + 1] = col[1]; d[k + 2] = col[2];
       d[k + 3] = 255 * Math.min(1, (1 - r) * R);
     }
   }
@@ -275,8 +339,8 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
   let t0 = 0, doy = 273, month = -1, running = false, visible = true, last = 0;
 
   // Imagery first; land outlines only if it can't load; graticule if neither does.
-  Promise.all([loadTexture(DAY_URLS), loadTexture(NIGHT_URLS)]).then(([day, night]) => {
-    if (day) { tex = { day, night }; layout(); return; }
+  loadTexture(DAY_URLS).then((day) => {
+    if (day) { tex = { day }; layout(); return; }
     return fetch(LAND_URL).then((r) => r.json()).then((topo) => {
       land = landMask(topoRings(topo, "land"));
       layout();
@@ -412,10 +476,18 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
     const halo = ctx.createRadialGradient(G.x, G.y, G.R * 0.9, G.x, G.y, G.R * 1.5);
     halo.addColorStop(0, "rgba(70,150,255,0.22)"); halo.addColorStop(1, "rgba(70,150,255,0)");
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(G.x, G.y, G.R * 1.5, 0, Math.PI * 2); ctx.fill();
-    const lx = G.x + SUN[0] * G.R * 0.025, ly = G.y - SUN[1] * G.R * 0.025;
-    const limb = ctx.createRadialGradient(lx, ly, G.R * 0.97, lx, ly, G.R * 1.07);
-    limb.addColorStop(0, "rgba(150,205,255,0.55)"); limb.addColorStop(1, "rgba(150,205,255,0)");
-    ctx.fillStyle = limb; ctx.beginPath(); ctx.arc(lx, ly, G.R * 1.07, 0, Math.PI * 2); ctx.fill();
+    // faint all-round rim, then a brighter crescent on the sunlit side
+    const rimAll = ctx.createRadialGradient(G.x, G.y, G.R * 0.98, G.x, G.y, G.R * 1.05);
+    rimAll.addColorStop(0, "rgba(120,190,255,0.22)"); rimAll.addColorStop(1, "rgba(120,190,255,0)");
+    ctx.fillStyle = rimAll; ctx.beginPath(); ctx.arc(G.x, G.y, G.R * 1.05, 0, Math.PI * 2); ctx.fill();
+    const lx = G.x + SUN[0] * G.R * 0.06, ly = G.y - SUN[1] * G.R * 0.06;
+    const limb = ctx.createRadialGradient(lx, ly, G.R * 0.96, lx, ly, G.R * 1.06);
+    limb.addColorStop(0, "rgba(160,215,255,0.6)"); limb.addColorStop(1, "rgba(160,215,255,0)");
+    ctx.save();
+    ctx.beginPath(); ctx.arc(G.x, G.y, G.R * 1.12, 0, Math.PI * 2);
+    ctx.arc(G.x, G.y, G.R * 0.995, 0, Math.PI * 2, true); ctx.clip();   // outside the disc only
+    ctx.fillStyle = limb; ctx.beginPath(); ctx.arc(lx, ly, G.R * 1.06, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
     drawOrbits(false); drawSats(time, false);
     ctx.drawImage(globeImg, G.x - G.R, G.y - G.R, G.R * 2, G.R * 2);
     // the region glows with the day's activity
