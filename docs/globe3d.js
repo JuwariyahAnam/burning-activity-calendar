@@ -70,14 +70,14 @@ void main() {
   if (uTex > 0.5) day = textureLod(uDay, vec2(lon / 6.2831853 + 0.5, 0.5 - lat / 3.14159265), uLod).rgb;
   float ndl = dot(n, L);
   vec3 col = day * (0.05 + 1.12 * pow(max(ndl, 0.0), 0.85));
-  float water = step(day.r + 0.04, day.b) * step(day.r + day.g + day.b, 1.0);
+  float water = smoothstep(0.03, 0.14, day.b - day.r) * (1.0 - smoothstep(0.9, 1.2, day.r + day.g + day.b));
   // clouds drift slowly eastward
   float q = fbm(w * 1.9 + 5.2);
   float c = fbm(w * 4.2 + q * 2.6 + vec3(uTime * 0.004, 0.0, 0.0));
   float cloud = smoothstep(0.5, 0.78, c * (0.8 + 0.2 * cos(lat * 3.2)) + 0.05) * 0.85 * uClouds;
   col = mix(col, vec3(0.94, 0.97, 1.0) * (0.04 + 1.0 * max(ndl, 0.0)), cloud);
   vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
-  col += pow(max(dot(n, H), 0.0), 60.0) * 0.5 * water * (1.0 - cloud) * vec3(1.0, 0.95, 0.88);
+  col += pow(max(dot(n, H), 0.0), 60.0) * 0.35 * water * (1.0 - cloud) * vec3(1.0, 0.95, 0.88);
   col = mix(vec3(0.004, 0.018, 0.045), col, 0.1 + 0.9 * smoothstep(-0.22, 0.12, ndl));   // night side
   float rim = pow(1.0 - n.z, 2.4);
   col = mix(col, vec3(0.42, 0.7, 1.0), min(0.9, 0.03 + rim * (0.15 + 1.0 * smoothstep(-0.3, 0.55, ndl))));

@@ -584,7 +584,7 @@ function renderTiming() {
     `<button type="button" data-i="${i}" aria-pressed="${i === state.timingIdx}">${t.name}</button>`).join("");
   const t = timing[state.timingIdx], rows = t.rows;
   const clear = (p) => (Number.isFinite(p) && p < 0.05 ? "a clear trend" : "not a clear trend");
-  const pv = (p) => (Number.isFinite(p) ? `p = ${p < 0.001 ? "<0.001" : fmt(p, 3)}` : "too few years");
+  const pv = (p) => (Number.isFinite(p) ? (p < 0.001 ? "p < 0.001" : `p = ${fmt(p, 3)}`) : "too few years");
   const sh = t.midShift.perDecade;
   const shift = Math.abs(sh) < 1
     ? "has stayed about the same"

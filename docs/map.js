@@ -144,7 +144,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
   function draw() {
     if (!ctx) return;
     ctx.clearRect(0, 0, W, H);
-    if (cache) ctx.drawImage(cache, 0, 0, W, H);
+    if (cache?.width && cache.height) ctx.drawImage(cache, 0, 0, W, H);
     if (paths) {
       ctx.lineJoin = "round";
       paths.districts.forEach((p, i) => {
