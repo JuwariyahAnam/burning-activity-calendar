@@ -147,6 +147,7 @@ Cloud from the same repository.
 | `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
 | `regions.json`, `regions.py` | The study areas and a helper to read them |
 | `update.py` | Daily refresh: latest near-real-time fires, merged and rebuilt |
+| `tools/stamp_version.py` | Run after changing the website's scripts: gives them a new version so browsers do not mix old and new files |
 | `alerts.py` | Districts far above usual, written as `alerts.json` per area and an RSS feed |
 | `.github/workflows/update.yml` | Optional daily update and publishing on GitHub |
 | `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe3d.js` (WebGL hero globe), `minimap.js` (place close-ups), `hotspots.js` (fire dots), `season.js` (typical year, outlook, season timing, trends) |
