@@ -83,9 +83,8 @@ def get(url, retries=len(WAITS) + 1):
                 body = ""
             if err.code == 429 or "transaction" in body or "limit" in body:
                 raise LimitReached(f"HTTP {err.code}") from None
-            if err.code in (400, 401) and "key" in body:
-                raise FirmsError(f"FIRMS rejected the MAP_KEY (HTTP {err.code}). "
-                                 "Check FIRMS_MAP_KEY.") from None
+            if err.code in (400, 401, 403) and "key" in body:
+                raise KeyRejected(err.code, body) from None
             what = f"HTTP {err.code}"
         except (OSError, http.client.HTTPException) as err:
             # OSError covers URLError, timeouts and connection resets;
@@ -107,12 +106,21 @@ class LimitReached(Exception):
     pass
 
 
+class KeyRejected(Exception):
+    """FIRMS refused the MAP_KEY. Right after heavy use this can be a
+    temporary block, so a key that already worked is retried."""
+    def __init__(self, code, body):
+        super().__init__(f"HTTP {code}")
+        self.code, self.body = code, body
+
+
 class Budget:
     """Keep under the MAP_KEY transaction limit. Safe to share between threads:
     while one thread pauses for the limit, the others wait too."""
 
     def __init__(self, key):
         self.key, self.window_start, self.gen = key, time.time(), 0
+        self.worked, self.rejected = False, 0      # for KeyRejected
         self.lock = threading.Lock()
         # Count what this MAP_KEY has already used in the last 10 minutes:
         # an earlier run, or another window downloading with the same key.
@@ -152,13 +160,14 @@ class Budget:
                 self.window_start = time.time()
             self.used += n
 
-    def pause_full_window(self, seen_gen):
+    def pause_full_window(self, seen_gen, say=True):
         """Wait out the 10-minute window once, however many workers hit it."""
         with self.lock:
             if self.gen != seen_gen:            # another worker already waited
                 return
-            print("  FIRMS says the 10-minute limit was reached; pausing 10 min "
-                  "(normal, leave it running)")
+            if say:
+                print("  FIRMS says the 10-minute limit was reached; pausing 10 min "
+                      "(normal, leave it running)")
             time.sleep(605)
             self.used = self.synced = 0
             self.window_start, self.gen = time.time(), self.gen + 1
@@ -223,6 +232,20 @@ def fetch_one(product, day, n, key, bbox, out, budget):
         except LimitReached:
             budget.pause_full_window(gen)
             continue
+        except KeyRejected as err:
+            said = " ".join(err.body.replace(key.lower(), "<key>").split())[:160]
+            with budget.lock:
+                budget.rejected += 1
+                tries = budget.rejected
+            if not budget.worked or tries > 4:
+                raise FirmsError(f"FIRMS rejected the MAP_KEY ({err}): \"{said}\". "
+                                 "Check FIRMS_MAP_KEY; if it worked before, wait 15 minutes "
+                                 "and run the same command again.") from None
+            say_once(f"  FIRMS refused the key for now ({err}: \"{said}\"); "
+                     "this can happen after heavy use. Pausing 10 min, then trying again.", every=300)
+            budget.pause_full_window(gen, say=False)
+            continue
+        budget.worked, budget.rejected = True, 0
         first_line = text.lstrip().split("\n", 1)[0].lower()
         if not text.strip() or first_line.startswith("latitude"):
             tmp = out.with_suffix(".part")
