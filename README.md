@@ -23,10 +23,13 @@ python prepare.py "raw/*.csv"          # writes data/cell_days.csv.gz
 streamlit run app.py
 ```
 
-`fetch_firms.py` stays under the API limit of 5,000 transactions per 10
-minutes (one per day of data), so a full 20-year download takes roughly
-30-45 minutes. If it stops, run it again; finished chunks are cached in
-`raw/api_cache/`. Never commit your MAP_KEY.
+`fetch_firms.py` runs six requests at once and stays under the API limit
+of 5,000 transactions per 10 minutes (one per day of data), so a 20-year
+download takes about 30-40 minutes. NOAA-20 is fetched from 2026 only,
+because the app needs it only after S-NPP ended; add
+`--noaa20-start 2018-04-01` for its full record. If the script stops, run
+it again; finished chunks are cached in `raw/api_cache/`. Never commit
+your MAP_KEY.
 
 To deploy, push this folder (including `data/cell_days.csv.gz`) to a public
 GitHub repository and point Streamlit Community Cloud at `app.py`.

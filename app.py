@@ -180,7 +180,9 @@ with st.sidebar:
     viirs_all = st.checkbox(
         "VIIRS: use all satellites", value=False,
         help="Off = one reference satellite at a time (S-NPP, then NOAA-20), "
-             "which avoids jumps when satellites were added in 2018 and 2023.")
+             "which avoids jumps when satellites were added in 2018 and 2023. "
+             "On needs NOAA-20's full record: "
+             "fetch_firms.py --noaa20-start 2018-04-01")
 
 bbox = (st.session_state.s, st.session_state.w,
         st.session_state.n, st.session_state.e)
