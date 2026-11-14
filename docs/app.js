@@ -515,7 +515,7 @@ function renderAlerts() {
     `${th("ratio", "Times usual")}${th("rank", "Against earlier years", "hist")}</tr></thead><tbody>${
     shown.map((r) => {
       const d = districts.districts[r.id];
-      return `<tr tabindex="0" data-id="${r.id}"><td>${d.name}<span class="st">${d.state}</span>${r.record ? '<span class="badge">record</span>' : ""}</td>` +
+      return `<tr tabindex="0" data-id="${r.id}"><td>${d.name}<span class="st">, ${d.state}</span>${r.record ? '<span class="badge">record</span>' : ""}</td>` +
         `<td class="${r.flagged ? "flag" : ""}">${fmt(r.now)}</td><td>${fmt(r.median)}</td>` +
         `<td class="${r.flagged ? "flag" : ""}">${Number.isFinite(r.ratio) ? `×${fmt(r.ratio, 1)}` : r.now > 0 ? "new" : "–"}</td>` +
         `<td class="hist">${rankText(r)}</td></tr>`;
@@ -756,7 +756,7 @@ function renderDistricts() {
       const diff = s.usual > 0 ? 100 * (s.now / s.usual - 1) : NaN;
       const cls = diff > 10 ? "up" : diff < -10 ? "down" : "";
       return `<tr tabindex="0" data-id="${s.id}" class="${selIds.size === 1 && selIds.has(s.id) ? "on" : ""}">
-        <td>${s.d.name}<span class="st">${s.d.state}</span></td>
+        <td>${s.d.name}<span class="st">, ${s.d.state}</span></td>
         <td class="barcell"><div class="bar"><span style="width:${(100 * (s.now || 0)) / top}%"></span>${Number.isFinite(s.usual) ? `<em style="left:${(100 * s.usual) / top}%"></em>` : ""}</div></td>
         <td>${fmt(s.now)}</td><td>${fmt(s.usual)}</td><td class="${cls}">${pct(diff)}</td><td class="py">${fmt(s.perYear)}</td>${trendCell(trendOf(s))}</tr>`;
     }).join("")}</tbody>`;
