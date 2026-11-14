@@ -67,7 +67,7 @@ export const hideTip = () => tip().classList.remove("show");
 
 // ----------------------------------------------------------- scales
 // Round axis: a nice step (1, 2, 2.5 or 5 x 10^n) and a top that is a multiple of it.
-function axis(v, n = 4) {
+export function axis(v, n = 4) {
   if (!(v > 0)) v = 1;
   const raw = v / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p;
   const step = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
@@ -75,7 +75,7 @@ function axis(v, n = 4) {
   const digits = step < 1 ? (Number.isInteger(step * 10) ? 1 : 2) : Number.isInteger(step) ? 0 : 1;
   return { max, ticks: Array.from({ length: Math.round(max / step) + 1 }, (_, i) => i * step), digits };
 }
-const short = (v, d = 0) => (v >= 1e6 ? `${fmt(v / 1e6, 1)}M` : v >= 1e4 ? `${fmt(v / 1e3)}k` : fmt(v, d));
+export const short = (v, d = 0) => (v >= 1e6 ? `${fmt(v / 1e6, 1)}M` : v >= 1e4 ? `${fmt(v / 1e3)}k` : fmt(v, d));
 // Pick labels every `every` items, always keep `keep`, and drop any label that would
 // sit closer than `every` to a kept one.
 function labelIndexes(n, every, keep) {

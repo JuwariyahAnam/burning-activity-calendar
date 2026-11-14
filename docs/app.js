@@ -4,6 +4,7 @@ import * as E from "./engine.js";
 import { lineChart, renderCalendar, calendarTable, barChart, showTip, fmt, pct, median,
          COLORS, MONTHS, MONTH_NAMES, seasonChart, timingChart, SEASON_COLORS } from "./viz.js";
 import * as S from "./season.js";
+import { createCompare } from "./compare.js";
 import { createMap } from "./map.js";
 import { createGlobe } from "./globe3d.js";
 import { createMiniMap } from "./minimap.js";
@@ -16,6 +17,7 @@ const state = { sel: null, method: DEFAULT_METHOD, aquaOnly: false, viirsAll: fa
                 yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false,
                 compareYear: null, timingIdx: null, alertDays: 7, alertSort: { key: "ratio", dir: -1 } };
 let season = null;                           // typical year for the current selection
+let compare = null;
 let hot = null, dotsKey = "";
 let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
 
@@ -66,6 +68,8 @@ async function load() {
   if (districts) mini = createMiniMap($("mini"), meta, districts, rows,
     { onToggle: (w) => map.setInset(innerWidth >= 700 ? w : 0) });
   wireControls();
+  compare = createCompare($("compare"), { regions, current, meta, rows, districts, state,
+                                         getSel: () => state.sel, selName });
   update();
   reveals();
   $("loading").classList.add("done");
@@ -412,6 +416,7 @@ function renderAll() {
   renderTiming();
   renderMtd();
   renderTrust();
+  compare?.render();
   writeUrl();
 }
 

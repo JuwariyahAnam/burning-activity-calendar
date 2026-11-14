@@ -33,6 +33,7 @@
   <ul>
     <li><a href="#record">The record</a></li>
     <li><a href="#explore">Explore</a></li>
+    <li><a href="#compare">Compare</a></li>
     <li><a href="#trust">Method</a></li>
     <li><a href="#limits">Limits</a></li>
     <li><a href="#data">Get the data</a></li>
@@ -304,6 +305,51 @@
           </div>
         </div>
         <svg class="chart" id="mtd-svg" role="img" aria-labelledby="mtd-title"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Compare -->
+  <section id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <div class="intro reveal">
+        <h2 id="compare-title">Compare two places.</h2>
+        <p class="lede">Any study area, any district, or the area you chose on the map, side by
+          side on one scale.</p>
+      </div>
+      <div class="cmp-pick glass panel">
+        <label class="cmp-field"><span><i class="sw" style="background:#e8622a"></i>First place</span>
+          <select id="cmp-a"></select></label>
+        <button class="btn quiet" id="cmp-swap" type="button" aria-label="Swap the two places">Swap</button>
+        <label class="cmp-field"><span><i class="sw" style="background:#6aa6f5"></i>Second place</span>
+          <select id="cmp-b"></select></label>
+        <div class="cmp-mode">
+          <span class="muted small" id="cmp-mode-label">Show</span>
+          <div class="seg" role="group" aria-labelledby="cmp-mode-label" id="cmp-mode">
+            <button type="button" data-v="area" aria-pressed="true">Per 1,000 km²</button>
+            <button type="button" data-v="total" aria-pressed="false">Totals</button>
+            <button type="button" data-v="share" aria-pressed="false">Share</button>
+          </div>
+        </div>
+      </div>
+      <p class="muted small" id="cmp-status" aria-live="polite"></p>
+      <div id="cmp-body" hidden>
+        <div class="table-wrap glass panel"><table class="data cmp-table" id="cmp-table"></table></div>
+        <div class="block">
+          <div class="block-head">
+            <div>
+              <h3>A typical year</h3>
+              <p class="muted small" id="cmp-unit">Per 1,000 km² of each place, so places of different size can be compared.</p>
+            </div>
+          </div>
+          <ul class="legend static" id="cmp-legend"></ul>
+          <svg class="chart" id="cmp-year-svg" role="img" aria-label="Typical year of both places"></svg>
+        </div>
+        <div class="block">
+          <div class="block-head"><div><h3>Year by year</h3>
+            <p class="muted small">Harmonized fire-days in each complete year.</p></div></div>
+          <svg class="chart" id="cmp-total-svg" role="img" aria-label="Yearly fire-days of both places"></svg>
+        </div>
       </div>
     </div>
   </section>

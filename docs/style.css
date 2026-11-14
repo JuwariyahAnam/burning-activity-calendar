@@ -569,3 +569,18 @@ table.alerts .badge { display: inline-block; margin-left: 0.5rem; padding: 0.05r
                       font-size: 0.72rem; color: #ffc46b; border: 1px solid rgba(255,196,107,0.5); }
 .map-legend .flagkey i { border-top: 2px dashed rgba(255,190,90,0.95) !important; }
 @media (max-width: 700px) { table.alerts .hist { display: none; } }
+
+/* compare */
+.cmp-pick { display: flex; flex-wrap: wrap; gap: 1rem 1.2rem; align-items: end; padding: 1.2rem 1.4rem; }
+.cmp-field { display: flex; flex-direction: column; gap: 0.4rem; flex: 1 1 15rem; font-size: 0.86rem; color: var(--ink-2); }
+.cmp-field span { display: inline-flex; align-items: center; }
+.cmp-field select { font: 500 0.95rem var(--font); color: var(--ink); background: rgba(3,9,21,0.55);
+                    border: 1px solid var(--glass-edge); border-radius: 12px; padding: 0.65rem 0.8rem; }
+.cmp-pick .btn { padding: 0.65rem 1rem; font-size: 0.86rem; }
+.cmp-mode { display: flex; flex-direction: column; gap: 0.4rem; }
+.sw { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; flex: none; }
+#cmp-status { margin: 0.9rem 0 0; }
+table.cmp-table th[scope="row"] { text-align: left; color: var(--ink-2); font-weight: 500; }
+table.cmp-table td, table.cmp-table thead th { text-align: left; }
+table.cmp-table thead th { color: var(--ink); font-weight: 600; }
+#cmp-body .block { margin-top: 2.6rem; }
