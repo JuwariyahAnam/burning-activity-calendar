@@ -582,7 +582,7 @@ function renderSeason() {
   const ps = [...season.periods].sort((a, b) => a.start - b.start);
   const days = ps.reduce((n, p) => n + p.days, 0);
   $("critical").innerHTML = ps.length
-    ? `<p>Critical periods, when usual burning is at least a quarter of its yearly peak: ${days} days that hold ${fmt(100 * ps.reduce((t, p) => t + p.share, 0))}% of a typical year's burning.</p>` +
+    ? `<p>Critical periods, when usual burning is at least ${ps[0].level <= 0.26 ? "a quarter" : `${fmt(100 * ps[0].level)}%`} of its yearly peak: ${days} days that hold ${fmt(100 * ps.reduce((t, p) => t + p.share, 0))}% of a typical year's burning.</p>` +
       ps.map((p) => `<span class="period"><b>${dl(p.start)} – ${dl(p.end)}</b>: ${fmt(100 * p.share)}% of the year, busiest around ${dl(p.peak)}</span>`).join("")
     : "";
 }
