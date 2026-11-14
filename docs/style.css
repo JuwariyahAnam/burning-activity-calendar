@@ -514,6 +514,7 @@ footer p { max-width: 52rem; margin: 0 0 0.8rem; }
 .outlook-lead b { font-weight: 600; }
 .outlook { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .outlook .card { padding: 1.3rem 1.3rem 1.2rem; }
+#outlook-base { margin: 0.9rem 0 0; }
 .outlook .card h4 { margin: 0 0 0.6rem; font-size: 0.86rem; font-weight: 500; color: var(--ink-2); }
 .outlook .v { font-size: clamp(1.8rem, 3vw, 2.5rem); font-weight: 700; font-stretch: 85%; line-height: 1.05; }
 .outlook .v small { font-size: 0.9rem; font-weight: 500; color: var(--ink-2); font-stretch: 100%; margin-left: 0.35rem; }

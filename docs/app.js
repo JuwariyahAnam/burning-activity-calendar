@@ -447,6 +447,9 @@ function renderOutlook() {
        <p class="k">${o.period ? `The next usual peak is ${dl(o.period.start)} – ${dl(o.period.end)}.` : "No clear burning season in this area."}</p></div>`);
   }
   $("outlook").innerHTML = cards.join("");
+  const ref = season.ref;
+  $("outlook-base").textContent = `Usual means the median of ${ref.length} earlier years (${ref[0]}–${ref.at(-1)}). ` +
+    "Burning habits change, so to compare with recent years only, change Years above.";
 }
 
 // ------------------------------------------------- typical year
