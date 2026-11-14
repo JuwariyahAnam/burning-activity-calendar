@@ -300,7 +300,10 @@ def combine(product, cache, raw):
     if not files:
         return 0
     header, rows = None, 0
-    with open(raw / f"FIRMS_{product}.csv", "w", newline="", encoding="utf-8") as f:
+    # write next to it and swap in at the end, so prepare.py or build_site.py
+    # running at the same time never reads a half-written file
+    final, part = raw / f"FIRMS_{product}.csv", raw / f"FIRMS_{product}.csv.part"
+    with open(part, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         for path in files:
             r = csv.reader(io.StringIO(path.read_text(encoding="utf-8")))
@@ -316,6 +319,7 @@ def combine(product, cache, raw):
                 if row:
                     w.writerow(row)
                     rows += 1
+    part.replace(final)
     return rows
 
 
