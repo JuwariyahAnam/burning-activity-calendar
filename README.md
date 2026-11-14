@@ -5,6 +5,23 @@ NASA Space Apps Challenge 2026, "Harmonization of MODIS and VIIRS Hot Spots".
 A web app that turns MODIS and VIIRS active fire hotspots from NASA FIRMS
 into one consistent burning calendar for a chosen area.
 
+What it offers, for any study area, district or drawn rectangle:
+
+- **The burning calendar**: harmonized fire-days for every month since 2001
+  (2008 for the newer areas), as activity or against the usual level.
+- **This month and the next two weeks**: the month so far against earlier
+  years, what the coming 14 days usually bring, how the last 14 days compare
+  and how far the current season usually is by this date.
+- **A typical year and its critical periods**: the usual level and range for
+  each day of the year, with this year (and any other) on top.
+- **Season timing**: for each year, when 10%, 50% and 90% of each season's
+  burning had happened, with trend tests (Theil-Sen slope, Mann-Kendall).
+- **Districts**: this month against usual and the long-term trend per district,
+  with close-up maps of fire locations and intensity.
+- **Validation**: held-out-year error and a jump test at the 2012 switch.
+- **Data out**: seven CSV downloads, a link that reopens the exact view, and a
+  citation with the FIRMS product DOIs.
+
 ## Run it
 
 ```
@@ -61,8 +78,43 @@ because the app needs it only after S-NPP ended; add
 it again; finished chunks are cached in `raw/api_cache/`. Never commit
 your MAP_KEY.
 
-To deploy, push this folder (including `data/cell_days.csv.gz`) to a public
-GitHub repository and point Streamlit Community Cloud at `app.py`.
+## Running it for real
+
+The site is static, so any web host works; GitHub Pages is free.
+
+**Keep it current.** `update.py` downloads the latest near-real-time fires for
+every area, merges them into `data/<area>/cell_days.csv.gz` and rebuilds
+`docs/data/`. A daily run costs about 50 FIRMS transactions per area.
+
+```
+python update.py                  # all areas, last 21 days (or since the data ends)
+```
+
+Run it daily on your own machine (Windows Task Scheduler or cron), or let
+GitHub do it: `.github/workflows/update.yml` runs every morning, rebuilds the
+data and publishes the site, without committing anything. It is off until you:
+
+1. commit `data/<area>/cell_days.csv.gz` and `docs/data/` for every area;
+2. add the secret `FIRMS_MAP_KEY` and the variable `AUTO_UPDATE` = `true`
+   (Settings > Secrets and variables > Actions);
+3. set Settings > Pages > Source to **GitHub Actions**.
+
+If FIRMS is down, the workflow publishes the last good data. The page shows
+how old its newest data is and warns when it is more than 3 days old.
+
+**Every few months** NASA replaces near-real-time data with science-quality
+data. Re-run `fetch_firms.py --region all` and `prepare.py --region all`,
+then commit the new cell-day files.
+
+**Add an area** in `regions.json` (bounding box, states, start year, a one-line
+story), then run the three commands in "Run it" with `--region <slug>`.
+
+**Be clear about what it is.** It is an activity index from satellite
+detections, not burned area and not an official warning service; the page
+says so, and lists what the record can't tell you.
+
+The Streamlit version (`app.py`) can be deployed on Streamlit Community
+Cloud from the same repository.
 
 ## Method
 
@@ -89,7 +141,9 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 | `build_site.py` | Exports data for the website to `docs/data/` |
 | `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
 | `regions.json`, `regions.py` | The study areas and a helper to read them |
-| `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe3d.js` (WebGL hero globe), `minimap.js` (place close-ups), `hotspots.js` (fire dots) |
+| `update.py` | Daily refresh: latest near-real-time fires, merged and rebuilt |
+| `.github/workflows/update.yml` | Optional daily update and publishing on GitHub |
+| `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe3d.js` (WebGL hero globe), `minimap.js` (place close-ups), `hotspots.js` (fire dots), `season.js` (typical year, outlook, season timing, trends) |
 | `app.py` | Streamlit app (alternative interface) |
 | `tests/make_synthetic.py` | Synthetic data for code testing only |
 

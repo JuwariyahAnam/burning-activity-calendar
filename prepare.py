@@ -55,11 +55,15 @@ def prepare(paths, out, a):
     for path in paths:
         raw = hz.read_firms_csv(path)
         c = hz.clean(raw, a.modis_min_conf, keep, a.tz)
-        parts.append(hz.to_cell_days(c, a.cell))
+        parts.append(c)
         print(f"{path}: {len(raw):,} detections -> {len(c):,} kept")
-    cd = pd.concat(parts)
-    keys = ["instrument", "satellite", "cell_lat", "cell_lon", "local_date"]
-    cd = cd.groupby(keys, as_index=False).sum()
+    det = pd.concat(parts)
+    n = len(det)
+    # a detection in two files (a full download and a recent update) counts once
+    det = det.drop_duplicates(["satellite", "latitude", "longitude", "local_date", "frp"])
+    if len(det) < n:
+        print(f"  {n - len(det):,} detections appeared in more than one file; counted once")
+    cd = hz.to_cell_days(det, a.cell)
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     cd.to_csv(out, index=False)

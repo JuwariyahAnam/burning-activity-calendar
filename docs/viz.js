@@ -329,7 +329,9 @@ function drawSeason(svg) {
       el("rect", { x: x(a), y: m.t, width: Math.max(1, x(b) - x(a)), height: H - m.t - m.b,
                    fill: "rgba(241,127,58,0.08)" }, svg);
     }
-    el("text", { class: "note", x: x(parts[0][0]) + 4, y: m.t - 8, "font-size": 11 }, svg)
+    const lx = x(parts[0][0]) + 4, nearEdge = lx + 100 > W - m.r;
+    el("text", { class: "note", x: nearEdge ? W - m.r : lx, y: m.t - 8, "font-size": 11,
+                 "text-anchor": nearEdge ? "end" : "start" }, svg)
       .textContent = `${Math.round(p.share * 100)}% of the year`;
   }
   const g = el("g", { class: "grid" }, svg);
@@ -417,9 +419,11 @@ function drawTiming(svg) {
     el("line", { x1: x(t), x2: x(t), y1: m.t, y2: H - m.b }, g);
     el("text", { x: x(t) + 3, y: H - 10 }, svg).textContent = MONTHS[MONTH_START.indexOf((startDoy + t) % 365)];
   }
-  const every = rows.length > 16 ? 5 : 2;
+  const every = rows.length > 16 ? 5 : 2, lastI = rows.length - 1;
+  const labeled = new Set(rows.map((r, i) => (r.year % every === 0 ? i : -1)).filter((i) => i >= 0));
+  if (![...labeled].some((i) => lastI - i < Math.ceil(every / 2))) labeled.add(lastI);
   rows.forEach((r, i) => {
-    if (r.year % every === 0 || i === rows.length - 1) {
+    if (labeled.has(i)) {
       el("text", { x: m.l - 8, y: y(i) + 4, "text-anchor": "end" }, svg).textContent = r.year;
     }
     el("line", { x1: x(r.start), x2: x(r.end), y1: y(i), y2: y(i), stroke: "#6c7ca3", "stroke-width": 3, "stroke-linecap": "round" }, svg);

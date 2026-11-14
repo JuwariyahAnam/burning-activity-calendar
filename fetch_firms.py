@@ -242,7 +242,10 @@ def fetch(job, key, bbox, step, cache, budget, workers):
     folder.mkdir(parents=True, exist_ok=True)
     todo = [(d, n, folder / f"{d}_{n}.csv") for d, n in chunks(lo, hi, step)]
     days = (hi - lo).days + 1
-    left = [t for t in todo if not t[2].exists()]
+    # a chunk ending in the last 3 days may have been saved before all its data
+    # arrived, so it is fetched again
+    fresh = dt.date.today() - dt.timedelta(days=3)
+    left = [t for t in todo if not t[2].exists() or t[0] + dt.timedelta(days=t[1] - 1) >= fresh]
     left_days = sum(n for _, n, _ in left)
     print(f"{product}: {lo} to {hi} ({days:,} days, "
           f"{days - left_days:,} already saved)")
@@ -340,8 +343,9 @@ def download(a):
     fam_start = {"VIIRS_NOAA20": dt.date.fromisoformat(a.noaa20_start)}
     jobs = [j for j in plan(start, end, availability(a.key), fam_start)
             if j[0] in wanted]
+    fresh = dt.date.today() - dt.timedelta(days=3)
     left = sum(n for _, product, lo, hi in jobs for d, n in chunks(lo, hi, a.step)
-               if not (cache / product / f"{d}_{n}.csv").exists())
+               if not (cache / product / f"{d}_{n}.csv").exists() or d + dt.timedelta(days=n - 1) >= fresh)
     print(f"{left:,} days of data left to download, at least "
           f"{left / (LIMIT - SAFETY) * 10:.0f} minutes because of the FIRMS limit. "
           "Safe to stop and re-run; finished chunks are kept.\n")

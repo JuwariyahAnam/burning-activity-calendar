@@ -1,0 +1,66 @@
+# Daily update and deployment of the website (GitHub Pages).
+# AI disclosure: drafted with Claude (Anthropic); review before use.
+#
+# Off until you turn it on. To use it:
+#   1. Commit data/<area>/cell_days.csv.gz and docs/data/ for every area.
+#   2. Settings > Secrets and variables > Actions:
+#        secret   FIRMS_MAP_KEY = your FIRMS MAP_KEY
+#        variable AUTO_UPDATE   = true
+#   3. Settings > Pages > Source: GitHub Actions.
+# Each run downloads the latest near-real-time fires (about 50 FIRMS
+# transactions per area), rebuilds docs/data and publishes the site. Nothing
+# is committed, so the repository does not grow; the next run starts again
+# from the committed data.
+name: Update fire data and publish
+
+on:
+  schedule:
+    - cron: "47 1 * * *"          # 07:17 India time, every day
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name == 'workflow_dispatch' || vars.AUTO_UPDATE == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      FIRMS_MAP_KEY: ${{ secrets.FIRMS_MAP_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas numpy
+      - name: Cache district boundaries
+        uses: actions/cache@v4
+        with:
+          path: data/boundaries
+          key: geoboundaries-ind-v1
+      - name: Download the latest fires and rebuild the site data
+        if: env.FIRMS_MAP_KEY != ''
+        continue-on-error: true      # if FIRMS is down, publish the last good data
+        run: python update.py --region all
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -56,6 +56,9 @@ def main():
     p.add_argument("--fine", type=float, default=0.02,
                    help="close-up map spot size in degrees (must divide --cell)")
     p.add_argument("--tz", type=float, default=5.5, help="hours ahead of UTC, as prepare.py")
+    p.add_argument("--keep-hotspots", action="store_true",
+                   help="reuse the existing close-up file when the raw downloads are not "
+                        "available (used by update.py on a server)")
     a = p.parse_args()
     a.state_aliases = [[x.strip()] for x in a.states.split(",")]
     a.clip = None
@@ -133,6 +136,9 @@ def build(a):
 
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
+    old = None
+    if getattr(a, "keep_hotspots", False) and (out / "meta.json").exists() and (out / "hotspots.bin").exists():
+        old = (json.loads((out / "meta.json").read_text()), (out / "hotspots.bin").read_bytes())
     with open(out / "cells.bin", "wb") as f:
         f.write(day.astype("<u2").tobytes())
         f.write(cell.astype("<u2").tobytes())
@@ -166,7 +172,9 @@ def build(a):
     elif dist_file.exists():
         dist_file.unlink()
     meta["hotspots"] = None
-    if bnd:
+    if bnd and old:
+        meta["hotspots"] = reuse_hotspots(old, cell_id, hot_file)
+    elif bnd:
         meta["hotspots"] = export_hotspots(a, meta, cell_id, bnd["cellDistrict"], cd, hot_file)
     if meta["hotspots"] is None and hot_file.exists():
         hot_file.unlink()
@@ -176,6 +184,27 @@ def build(a):
           f"cells.bin {size:.1f} MB -> {out}")
     for k, (lo, hi) in cov.items():
         print(f"  {k}: {lo.date()} to {hi.date()}")
+
+
+def reuse_hotspots(old, cell_id, path):
+    """Keep the existing close-up spots, renumbered to the new grid cells."""
+    old_meta, buf = old
+    info = old_meta.get("hotspots")
+    if not info:
+        return None
+    n = info["rows"]
+    cols = [np.frombuffer(buf, "<u2", n, 0), np.frombuffer(buf, "<u2", n, 2 * n),
+            np.frombuffer(buf, "<u2", n, 4 * n), np.frombuffer(buf, "u1", n, 6 * n),
+            np.frombuffer(buf, "u1", n, 7 * n)]
+    remap = np.array([cell_id.get((la, lo), -1) for la, lo in old_meta["cells"]], dtype=np.int64)
+    new_cell = remap[cols[0]]
+    keep = new_cell >= 0
+    with open(path, "wb") as f:
+        f.write(new_cell[keep].astype("<u2").tobytes())
+        for c in cols[1:]:
+            f.write(c[keep].tobytes())
+    print(f"Close-up maps: kept {int(keep.sum()):,} existing spots (no raw downloads here).")
+    return {**info, "rows": int(keep.sum())}
 
 
 def export_hotspots(a, meta, cell_id, cell_district, cd, path):
