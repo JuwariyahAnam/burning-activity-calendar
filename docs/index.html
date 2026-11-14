@@ -214,6 +214,24 @@
         <p class="muted small" id="outlook-base"></p>
       </div>
 
+      <div class="block" id="alerts-block" hidden>
+        <div class="block-head">
+          <div>
+            <h3 id="alerts-title">Burning more than usual</h3>
+            <p class="muted small">Districts with more fire-days than in 9 of 10 earlier years on the
+              same dates, and at least one and a half times the usual. They are outlined in amber on
+              the map. Click a row for its close-up.</p>
+          </div>
+          <div class="seg" role="group" aria-label="Period to check" id="alert-days">
+            <button type="button" data-v="7" aria-pressed="true">7 days</button>
+            <button type="button" data-v="14" aria-pressed="false">14 days</button>
+            <button type="button" data-v="30" aria-pressed="false">30 days</button>
+          </div>
+        </div>
+        <p class="alerts-lead" id="alerts-lead" aria-live="polite"></p>
+        <div class="table-wrap glass panel"><table class="data alerts" id="alerts-table"></table></div>
+      </div>
+
       <div class="block" id="districts-block" hidden>
         <div class="block-head">
           <div>

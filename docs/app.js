@@ -14,7 +14,7 @@ const $ = (id) => document.getElementById(id);
 const DEFAULT_METHOD = "monthly";            // the team's chosen calibration
 const state = { sel: null, method: DEFAULT_METHOD, aquaOnly: false, viirsAll: false,
                 yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false,
-                compareYear: null, timingIdx: null };
+                compareYear: null, timingIdx: null, alertDays: 7, alertSort: { key: "ratio", dir: -1 } };
 let season = null;                           // typical year for the current selection
 let hot = null, dotsKey = "";
 let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
@@ -255,6 +255,11 @@ function wireControls() {
     state.compareYear = +e.target.value || null;
     renderSeason(); writeUrl();
   });
+  $("alert-days").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    $("alert-days").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    state.alertDays = +b.dataset.v; renderAlerts();
+  });
   $("timing-season").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     state.timingIdx = +b.dataset.i; renderTiming();
@@ -401,6 +406,7 @@ function renderAll() {
   renderFigures();
   renderFreshness();
   renderOutlook();
+  renderAlerts();
   renderCalendarBlock();
   renderSeason();
   renderTiming();
@@ -450,6 +456,74 @@ function renderOutlook() {
   const ref = season.ref;
   $("outlook-base").textContent = `Usual means the median of ${ref.length} earlier years (${ref[0]}–${ref.at(-1)}). ` +
     "Burning habits change, so to compare with recent years only, change Years above.";
+}
+
+// ------------------------------------------------- unusual activity
+let recent = null, rKey = "";
+function computeRecent() {
+  if (!districts || !regionK) return null;
+  const key = [state.method, state.aquaOnly, state.viirsAll, state.yearFrom, state.yearTo, state.alertDays].join("|");
+  if (key !== rKey) {
+    rKey = key;
+    recent = E.districtRecent(meta, rows, districts.cellDistrict, districts.districts.length, regionK,
+                              state, state.alertDays, state.yearFrom, state.yearTo);
+  }
+  return recent;
+}
+const recentOf = (id) => (recent ? recent.districts[id] : null);
+function rankText(r) {
+  if (!r || !r.years) return "–";
+  if (r.record) return `highest in ${r.years} years`;
+  return `more than ${r.below} of ${r.years} years`;
+}
+function renderAlerts() {
+  const R = computeRecent();
+  const ok = R && R.years >= 5 && R.from;
+  $("alerts-block").hidden = !ok;
+  if (!ok) { map.setFlags([]); return; }
+  const focus = new Set(districts.focusIds);
+  const list = R.districts.filter((r) => districts.districts[r.id].cells > 0 && (!focus.size || focus.has(r.id)) && Number.isFinite(r.now));
+  const flagged = list.filter((r) => r.flagged);
+  map.setFlags(flagged.map((r) => r.id));
+  const key = $("legend-flag"); if (key) key.hidden = !flagged.length;
+  const short = (d) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  const span = `${short(R.from)} to ${short(R.to)}`;
+  $("alerts-title").textContent = `Burning more than usual: last ${R.days} days`;
+  $("alerts-lead").innerHTML = flagged.length
+    ? `<b class="flag">${flagged.length} of ${list.length} districts</b> burned far more than usual from ${span}` +
+      (flagged.some((r) => r.record) ? `, ${flagged.filter((r) => r.record).length} of them more than in any of the ${R.years} earlier years.` : ".")
+    : `No district burned far more than usual from ${span}. These were closest:`;
+  const shown = (flagged.length ? flagged : [...list].filter((r) => r.now > 0)
+    .sort((a, b) => (b.ratio || 0) - (a.ratio || 0)).slice(0, 5));
+  const { key: sk, dir } = state.alertSort;
+  const val = { name: (r) => districts.districts[r.id].name, now: (r) => r.now, median: (r) => r.median,
+                ratio: (r) => (Number.isFinite(r.ratio) ? r.ratio : r.now > 0 ? Infinity : 0), rank: (r) => r.below / Math.max(1, r.years) };
+  shown.sort((a, b) => { const x = val[sk](a), y = val[sk](b); return (x < y ? -1 : x > y ? 1 : 0) * dir; });
+  const th = (k, label, cls = "") => `<th class="${cls}"${k === sk ? ` aria-sort="${dir > 0 ? "ascending" : "descending"}"` : ""}><button type="button" data-k="${k}">${label}</button></th>`;
+  $("alerts-table").innerHTML = `<thead><tr>${th("name", "District")}${th("now", `Last ${R.days} days`)}${th("median", "Usual")}` +
+    `${th("ratio", "Times usual")}${th("rank", "Against earlier years", "hist")}</tr></thead><tbody>${
+    shown.map((r) => {
+      const d = districts.districts[r.id];
+      return `<tr tabindex="0" data-id="${r.id}"><td>${d.name}<span class="st">${d.state}</span>${r.record ? '<span class="badge">record</span>' : ""}</td>` +
+        `<td class="${r.flagged ? "flag" : ""}">${fmt(r.now)}</td><td>${fmt(r.median)}</td>` +
+        `<td class="${r.flagged ? "flag" : ""}">${Number.isFinite(r.ratio) ? `×${fmt(r.ratio, 1)}` : r.now > 0 ? "new" : "–"}</td>` +
+        `<td class="hist">${rankText(r)}</td></tr>`;
+    }).join("")}</tbody>`;
+  $("alerts-table").querySelectorAll("th button").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.k;
+    state.alertSort = { key: k, dir: state.alertSort.key === k ? -state.alertSort.dir : (k === "name" ? 1 : -1) };
+    renderAlerts();
+  }));
+  $("alerts-table").querySelectorAll("tbody tr").forEach((tr) => {
+    const pick = () => {
+      state.sel = { kind: "districts", ids: [+tr.dataset.id] };
+      update();
+      mini?.open(+tr.dataset.id, [state.yearFrom, state.yearTo]);
+      $("map").scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "center" });
+    };
+    tr.addEventListener("click", pick);
+    tr.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+  });
 }
 
 // ------------------------------------------------- typical year
@@ -524,7 +598,7 @@ function renderMapDots() {
     <div class="bar" style="background:${redGradient}"></div>
     <div class="ends"><span>${hasFrp ? "Lower" : "Fewer"}</span><span>${hasFrp ? "Higher fire intensity" : "More fire-days"}</span></div>
     <div class="ends"><span>${hasFrp ? "Bigger dot: more detections" : "Dots are 10 km cells"}</span></div>
-    ${districts ? `<div class="lines"><span><i style="border-top:1.6px solid rgba(225,238,255,.8)"></i>State</span><span><i style="border-top:1px solid rgba(170,205,255,.5)"></i>District</span></div>` : ""}`;
+    ${districts ? `<div class="lines"><span><i style="border-top:1.6px solid rgba(225,238,255,.8)"></i>State</span><span><i style="border-top:1px solid rgba(170,205,255,.5)"></i>District</span><span class="flagkey" id="legend-flag" hidden><i></i>More than usual</span></div>` : ""}`;
   void unit;
 }
 
@@ -633,7 +707,11 @@ function describeDistrict(i) {
     `<div class="r"><span>Usual for these days</span><b>${fmt(s.usual)}</b></div>` +
     (Number.isFinite(diff) ? `<div class="r"><span>Change</span><b>${pct(diff)}</b></div>` : "") +
     `<div class="r"><span>Average per year</span><b>${fmt(s.perYear)}</b></div>` +
-    (Number.isFinite(trendOf(s).pct) ? `<div class="r"><span>Long-term trend</span><b>${pct(trendOf(s).pct)} a year</b></div>` : "");
+    (Number.isFinite(trendOf(s).pct) ? `<div class="r"><span>Long-term trend</span><b>${pct(trendOf(s).pct)} a year</b></div>` : "") +
+    (recentOf(i) && Number.isFinite(recentOf(i).now)
+      ? `<div class="r"><span>Last ${recent.days} days</span><b>${fmt(recentOf(i).now)} (usual ${fmt(recentOf(i).median)})</b></div>` +
+        (recentOf(i).flagged ? `<div class="r"><span>Burning far more than usual</span><b>${rankText(recentOf(i))}</b></div>` : "")
+      : "");
 }
 
 const trendCache = new WeakMap();
@@ -731,12 +809,13 @@ function downloadDistricts() {
   const focus = new Set(districts.focusIds);
   const lines = dStats.districts.filter((s) => districts.districts[s.id].cells > 0 && (!focus.size || focus.has(s.id)))
     .map((s) => {
-      const d = districts.districts[s.id], t = trendOf(s);
+      const d = districts.districts[s.id], t = trendOf(s), r = recentOf(s.id) || {};
       const diff = s.usual > 0 ? 100 * (s.now / s.usual - 1) : NaN;
-      return [`"${d.name}"`, `"${d.state}"`, num(s.now), num(s.usual), num(diff), num(s.perYear), num(t.pct), num(t.p)].join(",");
+      return [`"${d.name}"`, `"${d.state}"`, num(s.now), num(s.usual), num(diff), num(s.perYear), num(t.pct), num(t.p),
+              num(r.now), num(r.median), r.flagged ? 1 : 0].join(",");
     });
   save("districts.csv", header() + `# month so far: ${MONTH_NAMES[dStats.month - 1]} 1-${dStats.day}, ${dStats.year}; usual = median of earlier years for the same days.\n` +
-    "district,state,fire_days_month_so_far,usual,change_pct,fire_days_per_year,trend_pct_per_year,trend_p\n" + lines.join("\n"));
+    `district,state,fire_days_month_so_far,usual,change_pct,fire_days_per_year,trend_pct_per_year,trend_p,last_${state.alertDays}_days,usual_last_${state.alertDays}_days,more_than_usual\n` + lines.join("\n"));
 }
 function downloadCells() {
   const sel = selOpts(state.sel), names = ["Terra", "Aqua", "SNPP", "NOAA20"];

@@ -59,7 +59,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
   const focusIds = new Set(districts?.focusIds || []);
   const byStates = (districts?.focusMode || "states") === "states";
   D.forEach((x) => (x.box ||= ringsBox(x.rings)));
-  let dots = [], scaleT = () => 1, selection = null, hover = -1;
+  let dots = [], scaleT = () => 1, selection = null, hover = -1, flags = new Set();
   let drag = null, proj, ctx, W, H, paths = null, inset = 0, cache = null, dpr = 1;
 
   // the view: the focus states if known, else the data
@@ -159,6 +159,14 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
         ctx.lineWidth = s.focus ? 1.5 : 0.9;
         ctx.stroke(s.p);
       }
+      // districts burning far more than usual: amber outline on top
+      for (const i of flags) {
+        if (!paths.districts[i]) continue;
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,190,90,0.95)"; ctx.lineWidth = 2.2; ctx.setLineDash([5, 3]);
+        ctx.stroke(paths.districts[i]);
+        ctx.restore();
+      }
       drawLabels();
     }
     const b = drag ? drag.bbox : selection?.kind === "bbox" ? selection.bbox : null;
@@ -255,6 +263,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     setDots(list, scale) { dots = list; scaleT = scale; renderCache(); draw(); },
     // room on the right for the close-up panel (0 when it is closed)
     setInset(px) { if (px !== inset) { inset = px; if (ctx) layout(); } },
+    setFlags(ids) { flags = new Set(ids); draw(); },
     setSelection(sel) {
       selection = sel.kind === "districts" ? { kind: "districts", ids: new Set(sel.ids) } : sel;
       renderCache(); draw();

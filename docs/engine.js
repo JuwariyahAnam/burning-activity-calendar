@@ -351,3 +351,69 @@ export function analyse(meta, rows, opts) {
     annualHarm: annual(hMonths, (m) => (m.seen === m.days ? m.value : NaN)),
   };
 }
+
+// ---------------------------------------------------- unusual activity
+// For every district: harmonized fire-days in the last `days` days, and the
+// same dates in each earlier year in [yearFrom, yearTo]. A district is
+// flagged when it is above the 90th percentile of those years and at least
+// 1.5 times their median (and at least 5 fire-days), so quiet districts with
+// one or two fires are not flagged.
+export function districtRecent(meta, rows, cellDistrict, nDistricts, k, opts, days, yearFrom, yearTo) {
+  const { aquaOnly = false, viirsAll = false } = opts;
+  const start = Math.min(meta.coverage.MODIS[0], meta.coverage.VIIRS[0]);
+  const end = Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]);
+  const len = end - start + 1;
+  const M = Array.from({ length: nDistricts }, () => new Float32Array(len));
+  const V = Array.from({ length: nDistricts }, () => new Float32Array(len));
+  const mBits = aquaOnly ? FLAG.AQUA : FLAG.TERRA | FLAG.AQUA, snppEnd = meta.snppEnd;
+  for (let i = 0; i < rows.day.length; i++) {
+    const dist = cellDistrict[rows.cell[i]];
+    if (dist < 0) continue;
+    const d = rows.day[i], f = rows.flags[i], j = d - start;
+    if (f & mBits) M[dist][j]++;
+    let v;
+    if (viirsAll) v = f & (FLAG.SNPP | FLAG.NOAA20);
+    else if (snppEnd == null) v = f & FLAG.NOAA20;
+    else v = (f & FLAG.SNPP) || ((f & FLAG.NOAA20) && d > snppEnd);
+    if (v) V[dist][j]++;
+  }
+  const [vA, vB] = meta.coverage.VIIRS, [mA, mB] = meta.coverage.MODIS;
+  const observed = (d) => (d >= vA && d <= vB) || (d >= mA && d <= mB);
+  const value = (dist, d) => {
+    const j = d - start;
+    if (d >= vA && d <= vB) return V[dist][j];
+    return M[dist][j] * k[dayToDate(meta, d).getUTCMonth() + 1];
+  };
+  // the window in the latest year and the same calendar dates in earlier years
+  const lastDate = dayToDate(meta, end), lastYear = lastDate.getUTCFullYear();
+  const date0 = Date.parse(meta.date0 + "T00:00:00Z");
+  const windows = [];
+  for (let y = lastYear; y >= Math.max(yearFrom, 1990); y--) {
+    if (y > yearTo && y !== lastYear) continue;
+    const e = (Date.UTC(y, lastDate.getUTCMonth(), lastDate.getUTCDate()) - date0) / DAY_MS;
+    const s = e - days + 1;
+    if (s < start || e > end) continue;
+    let ok = true;
+    for (let d = s; d <= e; d++) if (!observed(d)) { ok = false; break; }
+    if (ok) windows.push({ year: y, s, e });
+  }
+  const cur = windows.find((w) => w.year === lastYear);
+  const past = windows.filter((w) => w.year !== lastYear);
+  const out = [];
+  for (let dist = 0; dist < nDistricts; dist++) {
+    const sum = (w) => { let t = 0; for (let d = w.s; d <= w.e; d++) t += value(dist, d); return t; };
+    const now = cur ? sum(cur) : NaN;
+    const hist = past.map(sum).sort((a, b) => a - b);
+    const q = (p) => {
+      if (!hist.length) return NaN;
+      const x = (hist.length - 1) * p, lo = Math.floor(x), hi = Math.ceil(x);
+      return hist[lo] + (hist[hi] - hist[lo]) * (x - lo);
+    };
+    const median = q(0.5), p90 = q(0.9), max = hist.length ? hist.at(-1) : NaN;
+    const flagged = hist.length >= 5 && now >= 5 && now > p90 && now >= 1.5 * median;
+    out.push({ id: dist, now, median, p90, max, below: hist.filter((v) => v < now).length,
+               years: hist.length, ratio: median > 0 ? now / median : NaN, flagged,
+               record: hist.length >= 5 && now > max && now >= 5 });
+  }
+  return { districts: out, days, from: cur ? dayToDate(meta, cur.s) : null, to: lastDate, years: past.length };
+}
