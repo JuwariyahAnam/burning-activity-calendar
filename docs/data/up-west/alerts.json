@@ -1,0 +1,100 @@
+{
+ "region": "Western Uttar Pradesh",
+ "days": 7,
+ "from": "2026-11-08",
+ "to": "2026-11-14",
+ "years": 18,
+ "method": "monthly",
+ "flagged": [
+  {
+   "id": 69,
+   "district": "Kanpur Nagar",
+   "state": "Uttar Pradesh",
+   "now": 18.0,
+   "usual": 1.5,
+   "ratio": 12.0,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 71,
+   "district": "Jalaun",
+   "state": "Uttar Pradesh",
+   "now": 49.0,
+   "usual": 8.5,
+   "ratio": 5.76,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  },
+  {
+   "id": 70,
+   "district": "Auraiya",
+   "state": "Uttar Pradesh",
+   "now": 26.0,
+   "usual": 7.0,
+   "ratio": 3.71,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  }
+ ],
+ "closest": [
+  {
+   "id": 73,
+   "district": "Kanpur Dehat",
+   "state": "Uttar Pradesh",
+   "now": 25.0,
+   "usual": 10.0,
+   "ratio": 2.5,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 15 of 18 years"
+  },
+  {
+   "id": 46,
+   "district": "Hapur",
+   "state": "Uttar Pradesh",
+   "now": 3.0,
+   "usual": 1.5,
+   "ratio": 2.0,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 11 of 18 years"
+  },
+  {
+   "id": 62,
+   "district": "Farrukhabad",
+   "state": "Uttar Pradesh",
+   "now": 2.0,
+   "usual": 1.0,
+   "ratio": 2.0,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 13 of 18 years"
+  },
+  {
+   "id": 51,
+   "district": "Bulandshahr",
+   "state": "Uttar Pradesh",
+   "now": 6.0,
+   "usual": 3.5,
+   "ratio": 1.71,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 10 of 18 years"
+  },
+  {
+   "id": 77,
+   "district": "Ghaziabad",
+   "state": "Uttar Pradesh",
+   "now": 5.0,
+   "usual": 3.0,
+   "ratio": 1.67,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 12 of 18 years"
+  }
+ ]
+}

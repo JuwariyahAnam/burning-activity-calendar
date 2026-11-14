@@ -1,0 +1,66 @@
+{
+ "region": "Punjab & Haryana",
+ "days": 7,
+ "from": "2026-11-08",
+ "to": "2026-11-14",
+ "years": 25,
+ "method": "monthly",
+ "flagged": [],
+ "closest": [
+  {
+   "id": 37,
+   "district": "Faridabad",
+   "state": "Haryana",
+   "now": 4.0,
+   "usual": 1.0,
+   "ratio": 4.0,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 20 of 25 years"
+  },
+  {
+   "id": 32,
+   "district": "Kurukshetra",
+   "state": "Haryana",
+   "now": 12.0,
+   "usual": 4.0,
+   "ratio": 3.0,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 21 of 25 years"
+  },
+  {
+   "id": 56,
+   "district": "Amritsar",
+   "state": "Punjab",
+   "now": 23.0,
+   "usual": 12.4,
+   "ratio": 1.85,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 17 of 25 years"
+  },
+  {
+   "id": 68,
+   "district": "Sahibzada Ajit Singh Nagar",
+   "state": "Punjab",
+   "now": 5.0,
+   "usual": 3.0,
+   "ratio": 1.67,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 18 of 25 years"
+  },
+  {
+   "id": 49,
+   "district": "Gurdaspur",
+   "state": "Punjab",
+   "now": 16.0,
+   "usual": 10.4,
+   "ratio": 1.55,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 17 of 25 years"
+  }
+ ]
+}

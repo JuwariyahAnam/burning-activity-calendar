@@ -16,6 +16,23 @@
    ],
    "from": 2001,
    "sample": false
+  },
+  {
+   "slug": "up-west",
+   "name": "Western Uttar Pradesh",
+   "story": "The eastern end of the rice-wheat belt, with the same October to November stubble season.",
+   "bbox": [
+    26.0,
+    77.0,
+    30.5,
+    80.5
+   ],
+   "center": [
+    28.25,
+    78.75
+   ],
+   "from": 2008,
+   "sample": false
   }
  ]
 }

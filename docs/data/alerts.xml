@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+  <title>Burning Activity Calendar: burning more than usual</title>
+  <link>https://juwariyahanam.github.io/burning-activity-calendar/</link>
+  <description>Districts with far more satellite fire detections than usual in the last 7 days, from harmonized NASA MODIS and VIIRS records.</description>
+  <lastBuildDate>Sat, 14 Nov 2026 20:28:02 +0000</lastBuildDate>
+  <item>
+    <title>Punjab &amp; Haryana: no district burning far more than usual, 8 Nov 2026 to 14 Nov 2026</title>
+    <link>https://juwariyahanam.github.io/burning-activity-calendar/?region=punjab-haryana</link>
+    <guid isPermaLink="false">punjab-haryana-2026-11-14</guid>
+    <pubDate>Sat, 14 Nov 2026 20:28:02 +0000</pubDate>
+    <description>Every district is within its usual range for these dates.
+From NASA FIRMS MODIS and VIIRS detections, harmonized. Not an official warning service.</description>
+  </item>
+  <item>
+    <title>Western Uttar Pradesh: 3 districts burning far more than usual, 8 Nov 2026 to 14 Nov 2026</title>
+    <link>https://juwariyahanam.github.io/burning-activity-calendar/?region=up-west</link>
+    <guid isPermaLink="false">up-west-2026-11-14</guid>
+    <pubDate>Sat, 14 Nov 2026 20:28:02 +0000</pubDate>
+    <description>Kanpur Nagar, Uttar Pradesh: 18 fire-days in 7 days, usual 1.5 (highest in 18 years)
+Jalaun, Uttar Pradesh: 49 fire-days in 7 days, usual 8.5 (more than 16 of 18 years)
+Auraiya, Uttar Pradesh: 26 fire-days in 7 days, usual 7 (more than 16 of 18 years)
+From NASA FIRMS MODIS and VIIRS detections, harmonized. Not an official warning service.</description>
+  </item>
+</channel>
+</rss>
