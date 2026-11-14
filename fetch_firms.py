@@ -51,7 +51,7 @@ FAMILIES = [
     ("VIIRS_NOAA20", "VIIRS_NOAA20_SP", "VIIRS_NOAA20_NRT", "2018-04-01"),
 ]
 PUNJAB_HARYANA = "73.8,27.6,77.6,32.6"          # west,south,east,north
-LIMIT, SAFETY = 5000, 300                        # transactions per 10 minutes
+LIMIT, SAFETY = 5000, 600                        # transactions per 10 minutes
 
 
 WAITS = (15, 30, 60, 120, 180, 300, 300)              # about 17 minutes in all
@@ -143,7 +143,9 @@ class Budget:
             if time.time() - self.window_start > 600:
                 self.used = self.synced = 0
                 self.window_start = time.time()
-            if self.used - self.synced >= 500:      # another run may share the key
+            # FIRMS can count more than one transaction per day of data, and other
+            # runs may share the key: check its own count every 200
+            if self.used - self.synced >= 200:
                 server = self.server_count()
                 if server is not None:
                     self.used = max(self.used, server)
@@ -287,6 +289,11 @@ def fetch(job, key, bbox, step, cache, budget, workers):
                     print(f"  {done:,}/{left_days:,} days  "
                           f"(~{eta:.0f} min left for {product})")
                     next_report += 250
+        except KeyboardInterrupt:
+            # workers may be sleeping through a 10-minute pause; do not wait for them
+            print("\nStopped by you. Everything downloaded so far is saved; "
+                  "run the same command again to continue.", flush=True)
+            os._exit(130)
         except BaseException:
             for f in futures:
                 f.cancel()
@@ -298,7 +305,10 @@ def combine(product, cache, raw):
     if not files:
         return 0
     header, rows = None, 0
-    with open(raw / f"FIRMS_{product}.csv", "w", newline="", encoding="utf-8") as f:
+    # write next to it and swap in at the end, so prepare.py or build_site.py
+    # running at the same time never reads a half-written file
+    final, part = raw / f"FIRMS_{product}.csv", raw / f"FIRMS_{product}.csv.part"
+    with open(part, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         for path in files:
             r = csv.reader(io.StringIO(path.read_text(encoding="utf-8")))
@@ -314,6 +324,7 @@ def combine(product, cache, raw):
                 if row:
                     w.writerow(row)
                     rows += 1
+    part.replace(final)
     return rows
 
 

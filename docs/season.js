@@ -112,7 +112,9 @@ export function criticalPeriods(med, level = CRITICAL_LEVEL, maxDays = 120) {
     runs = periodsAt(med, lv);
     if (runs.reduce((n, r) => n + r.days, 0) <= maxDays) break;
   }
-  return runs.map((r) => ({ ...r, level: Math.min(lv, 0.8) }));
+  // a blip of a few percent of the year is not a critical period
+  const big = runs.filter((r) => r.share >= 0.05);
+  return (big.length ? big : runs).map((r) => ({ ...r, level: Math.min(lv, 0.8) }));
 }
 function periodsAt(med, level) {
   const total = med.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
