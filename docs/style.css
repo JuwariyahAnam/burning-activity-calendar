@@ -367,8 +367,6 @@ h3 { font-size: 1.35rem; line-height: 1.2; margin: 0 0 0.4rem; font-weight: 600;
   .map-legend .lines { display: none; }
   .coords input { width: 4.6rem; }
   table.districts .barcell, table.districts .py { display: none; }
-  table.districts .st, table.alerts .st { display: block; }
-  table.districts .st::first-letter, table.alerts .st::first-letter { color: transparent; }
   table.districts th, table.districts td { padding: 0.45rem 0.4rem; }
   .table-wrap.panel { padding: 0.8rem 0.6rem; }
 }
