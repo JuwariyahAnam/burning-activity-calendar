@@ -1,8 +1,7 @@
-// Map and hero renderers: Web Mercator, CARTO dark tiles, canvas fire grid.
+// Explorer map: Web Mercator, CARTO dark tiles, canvas fire grid.
 // No map library, so the page works with one small set of files.
 // AI disclosure: drafted with Claude (Anthropic); reviewed by the team.
-import { ember, fmt, showTip, hideTip, reduceMotion, MONTH_NAMES } from "./viz.js";
-import { dayToDate } from "./engine.js";
+import { ember, fmt, showTip, hideTip } from "./viz.js";
 
 const merc = (lat, lon) => {
   const s = Math.sin((lat * Math.PI) / 180);
@@ -153,85 +152,4 @@ export function createMap(root, meta, { onSelect }) {
     },
     setBBox(b) { bbox = b; if (ctx) draw(); },
   };
-}
-
-// ----------------------------------------------------------------- hero
-// Replays a year: each frame shows the cells that burned on that date,
-// brighter where they burned on that date in more years.
-export function createHero(canvas, meta, rows, { monthEl, trackEl }) {
-  const d = meta.cellDeg, half = d / 2;
-  const byDoy = Array.from({ length: 366 }, () => new Map());
-  const doyOf = new Map();
-  const years = new Set();
-  for (let i = 0; i < rows.day.length; i++) {
-    const day = rows.day[i];
-    let info = doyOf.get(day);
-    if (!info) {
-      const dt = dayToDate(meta, day);
-      const start = Date.UTC(dt.getUTCFullYear(), 0, 1);
-      info = [Math.min(364, Math.floor((dt - start) / 86400000)), dt.getUTCFullYear()];
-      doyOf.set(day, info);
-    }
-    years.add(info[1]);
-    const m = byDoy[info[0]];
-    m.set(rows.cell[i], (m.get(rows.cell[i]) || 0) + 1);
-  }
-  const nYears = Math.max(1, years.size);
-  const lists = byDoy.map((m) => [...m.entries()]);
-  trackEl.replaceChildren(...MONTH_NAMES.map(() => document.createElement("span")));
-
-  let ctx, W, H, proj, cell = 2, doy = 0, last = 0, running = false, visible = true, month = -1;
-  function layout() {
-    ({ ctx, W, H } = setupCanvas(canvas));
-    // keep the fire clear of the headline: right half on wide screens, below it on phones
-    const copy = canvas.parentElement.querySelector(".hero-copy");
-    const pad = W >= 960
-      ? { l: W * 0.52, r: W * 0.05, t: 52 + H * 0.08, b: H * 0.2 }
-      : { l: W * 0.06, r: W * 0.06, t: copy.offsetTop + copy.offsetHeight + 28, b: 130 };
-    proj = fit(meta.extent, W, H, pad);
-    const [a] = proj.px(0, 0), [b] = proj.px(0, d);
-    cell = Math.max(1.6, (b - a) * 0.9);
-    ctx.fillStyle = "#04060c"; ctx.fillRect(0, 0, W, H);
-    if (reduceMotion) drawYear();
-  }
-  function dot(c, n, alphaScale = 1) {
-    const [la, lo] = meta.cells[c];
-    const [x, y] = proj.px(la, lo);
-    const t = n / nYears;
-    ctx.globalAlpha = Math.min(1, (0.25 + 0.75 * t) * alphaScale);
-    ctx.fillStyle = ember(0.35 + 0.65 * t);
-    ctx.beginPath(); ctx.arc(x, y, Math.min(9, cell * (0.55 + 0.6 * t)), 0, Math.PI * 2); ctx.fill();
-  }
-  function drawYear() {       // static picture for reduced motion
-    ctx.globalCompositeOperation = "lighter";
-    for (const list of lists) for (const [c, n] of list) dot(c, n, 0.08);
-    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-    monthEl.textContent = "The whole year";
-  }
-  function frame(t) {
-    if (!running) return;
-    const dt = Math.min(64, t - (last || t)); last = t;
-    doy = (doy + dt * 0.026) % 365;      // about 14 seconds per year
-    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-    ctx.fillStyle = "rgba(4,6,12,0.09)"; ctx.fillRect(0, 0, W, H);
-    ctx.globalCompositeOperation = "lighter";
-    for (const [c, n] of lists[Math.floor(doy)]) dot(c, n);
-    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
-    const m = dayToDate({ date0: "2001-01-01" }, Math.floor(doy)).getUTCMonth();
-    if (m !== month) {
-      month = m;
-      monthEl.textContent = MONTH_NAMES[m];
-      [...trackEl.children].forEach((s, i) => s.classList.toggle("on", i <= m));
-    }
-    requestAnimationFrame(frame);
-  }
-  const start = () => { if (!running && visible && !reduceMotion && !document.hidden) {
-    running = true; last = 0; requestAnimationFrame(frame); } };
-  const stop = () => { running = false; };
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? start() : stop(); })
-    .observe(canvas);
-  document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
-  new ResizeObserver(() => { layout(); }).observe(canvas);
-  layout();
-  start();
 }

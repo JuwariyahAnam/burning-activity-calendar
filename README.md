@@ -74,7 +74,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 | `harmonize.py` | All data and harmonization logic |
 | `prepare.py` | Raw FIRMS CSVs to a compact cell-day file |
 | `build_site.py` | Exports data for the website to `docs/data/` |
-| `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (map and hero) |
+| `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe.js` (hero globe) |
 | `app.py` | Streamlit app (alternative interface) |
 | `tests/make_synthetic.py` | Synthetic data for code testing only |
 
@@ -83,6 +83,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 - NASA FIRMS active fire data: MODIS Collection 6.1 and VIIRS 375 m
   (S-NPP, NOAA-20). https://firms.modaps.eosdis.nasa.gov/
 - Libraries: Streamlit, pandas, NumPy, Plotly, Folium, streamlit-folium.
+- Website: Natural Earth land outlines (public domain) via the world-atlas package on jsDelivr; base map tiles © OpenStreetMap contributors © CARTO; Instrument Sans font (Google Fonts, SIL Open Font License).
 - TODO: list every other dataset, library and reference you use.
 
 ## Use of AI

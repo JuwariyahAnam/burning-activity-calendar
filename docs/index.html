@@ -15,7 +15,13 @@
 <div class="loading" id="loading" role="status">Loading the fire record…</div>
 
 <nav class="nav" aria-label="Main">
-  <a class="name" href="#top">Burning Activity Calendar</a>
+  <a class="name" href="#top">
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+      <circle cx="11" cy="11" r="5.2" fill="#2f6fb8"/>
+      <circle cx="12.6" cy="9.6" r="1.4" fill="#f58f4a"/>
+      <ellipse cx="11" cy="11" rx="10" ry="4" fill="none" stroke="#5cc8f2" stroke-width="1.2" transform="rotate(-28 11 11)"/>
+    </svg>
+    Burning Activity Calendar</a>
   <ul>
     <li><a href="#record">The record</a></li>
     <li><a href="#explore">Explore</a></li>
@@ -42,11 +48,14 @@
         <a class="link" href="#record">See how the record was joined</a>
       </div>
     </div>
-    <div class="hero-clock" aria-hidden="true">
-      <div class="month" id="hero-month">January</div>
+    <div class="hero-clock" id="hero-clock" aria-hidden="true">
+      <div class="month" id="hero-month">October</div>
       <div class="track" id="hero-track"></div>
-      <div class="note" id="hero-note">Each point is a 10 km grid cell. Brighter means it burned on this date in more years.</div>
+      <div class="note" id="hero-note">Fires on each date, all years. Brighter cells burned on that date in more years.</div>
     </div>
+    <p class="visually-hidden">Animation: Earth with the Terra, Aqua, Suomi NPP and NOAA-20
+      satellites on their orbits, and a close-up of the region replaying where fires were
+      detected through the year.</p>
   </header>
 
   <!-- Scroll story -->
@@ -178,13 +187,13 @@
       <div class="verdict" id="verdict"></div>
 
       <div class="two">
-        <div>
+        <div class="glass panel">
           <h3>Tested on years it never saw</h3>
           <p class="muted small">For each year both instruments flew, we calibrate on the other
             years, predict that year's VIIRS fire-days from MODIS, and measure the error.</p>
           <div class="table-wrap" id="validation"></div>
         </div>
-        <div>
+        <div class="glass panel">
           <h3>Scaling factors in use</h3>
           <p class="muted small">VIIRS fire-days per MODIS fire-day, by calendar month, for the
             selected area.</p>
@@ -195,15 +204,25 @@
       <div class="block">
         <h3>How the record is built</h3>
         <ol class="steps">
-          <li><p><strong>Clean.</strong> MODIS confidence 30 or more, VIIRS nominal or high,
+          <li class="glass">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6h20l-8 9v7l-4 2v-9z" stroke-linejoin="round"/></svg>
+            <p><strong>Clean</strong> MODIS confidence 30 or more, VIIRS nominal or high,
             vegetation fires only, times converted to local dates.</p></li>
-          <li><p><strong>Count fire-days.</strong> A 10 km cell counts once per day if any
+          <li class="glass">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4h20v20H4zM4 11h20M4 18h20M11 4v20M18 4v20"/><rect x="11" y="11" width="7" height="7" fill="#f17f3a" stroke="none"/></svg>
+            <p><strong>Count fire-days</strong> A 10 km cell counts once per day if any
             detection falls in it, removing duplicates and much of the pixel-size gap.</p></li>
-          <li><p><strong>One VIIRS satellite at a time.</strong> S-NPP while it flew, NOAA-20
+          <li class="glass">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="11" y="11" width="6" height="6" rx="1"/><path d="M3 9l6 6M25 19l-6-6M5 11l4-4M23 17l-4 4"/><path d="M8 22a9 9 0 0 1-4-6" stroke-linecap="round"/></svg>
+            <p><strong>One VIIRS satellite at a time</strong> Suomi NPP while it flew, NOAA-20
             after, so new satellites in 2018 and 2023 add no false jumps.</p></li>
-          <li><p><strong>Calibrate.</strong> Learn VIIRS ≈ k × MODIS from the overlap years,
+          <li class="glass">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 4v20M6 24h16M5 9h18M5 9l-3 7h6zM23 9l-3 7h6z" stroke-linejoin="round"/></svg>
+            <p><strong>Calibrate</strong> Learn VIIRS ≈ k × MODIS from the overlap years,
             either one k or one per calendar month.</p></li>
-          <li><p><strong>Join and test.</strong> Scale the MODIS-only years, then check the join
+          <li class="glass">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 20c4-1 6-3 8-3s4 2 7 2 5-2 7-3" stroke-linecap="round"/><path d="M9 9l3 3 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <p><strong>Join and test</strong> Scale the MODIS-only years, then check the join
             on held-out years and across the 2012 switch.</p></li>
         </ol>
       </div>
@@ -215,14 +234,20 @@
     <div class="wrap">
       <div class="intro"><h2 id="limits-title">What the record can't tell you</h2></div>
       <div class="limits">
-        <div><h3>Fewer detections isn't less burning</h3>
+        <div class="glass">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="14" cy="14" r="10"/><path d="M14 8v6l4 3" stroke-linecap="round"/></svg>
+          <h3>Fewer detections isn't less burning</h3>
           <p>These satellites pass in the early afternoon and at night. Fires lit after the
             afternoon pass can be missed, and farmers in Punjab have shifted burning later in
             the day. A drop in counts can mean a change in timing.</p></div>
-        <div><h3>Recent months can change</h3>
+        <div class="glass">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M23 9a10 10 0 1 0 1 7" stroke-linecap="round"/><path d="M24 4v6h-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Recent months can change</h3>
           <p>The latest months use near-real-time data. NASA replaces it with science-quality
             data about five months later, which can shift recent values slightly.</p></div>
-        <div><h3>An activity index, not burned area</h3>
+        <div class="glass">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="4" width="20" height="20" rx="2" stroke-dasharray="3 3"/><circle cx="12" cy="13" r="2" fill="#f17f3a" stroke="none"/><circle cx="17" cy="17" r="1.5" fill="#f17f3a" stroke="none"/></svg>
+          <h3>An activity index, not burned area</h3>
           <p>Fire-days count grid cells with at least one detection per day. They track how
             much and how often an area burns, not how many fires there were or how large.</p></div>
       </div>
@@ -231,8 +256,8 @@
 
   <!-- Data -->
   <section id="data" aria-labelledby="data-title">
-    <div class="wrap">
-      <div class="intro">
+    <div class="wrap glass downloads-panel">
+      <div class="intro" style="margin-bottom:0">
         <h2 id="data-title">Take the data with you</h2>
         <p class="lede">Downloads cover the area and options you chose above.</p>
       </div>

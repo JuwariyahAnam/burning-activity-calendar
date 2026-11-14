@@ -3,7 +3,8 @@
 import * as E from "./engine.js";
 import { lineChart, renderCalendar, calendarTable, barChart, showTip, fmt, pct, median,
          COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
-import { createMap, createHero } from "./map.js";
+import { createMap } from "./map.js";
+import { createGlobeHero } from "./globe.js";
 
 const $ = (id) => document.getElementById(id);
 const state = { bbox: null, method: "monthly", aquaOnly: false, viirsAll: false,
@@ -27,7 +28,9 @@ async function load() {
   $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so you can see when burning happens and whether this season is unusual.`;
   $("data-note").textContent = `Data processed ${meta.generated}. Records from ${fmtDate(meta.coverage.MODIS[0])} to ${fmtDate(Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]))}.`;
 
-  createHero($("hero-canvas"), meta, rows, { monthEl: $("hero-month"), trackEl: $("hero-track") });
+  createGlobeHero($("hero-canvas"), meta, rows,
+    { monthEl: $("hero-month"), trackEl: $("hero-track"), clockEl: $("hero-clock") });
+  $("hero-note").textContent = `${meta.region}: fires on each date, all years. Brighter cells burned on that date in more years.`;
   story();
   map = createMap($("map"), meta, { onSelect: (b) => { state.bbox = b; update(); } });
   wireControls();
@@ -186,7 +189,7 @@ function renderFigures() {
     [pct(diff), `compared with the median of ${past.length} earlier years`, diff > 0 ? "up" : diff < 0 ? "down" : ""],
     [Number.isFinite(rank) ? `${fmt(rank)}%` : "–", "of earlier years had less burning on these days", ""],
     [peak >= 0 ? MONTH_NAMES[peak] : "–", "is usually the peak month", ""],
-  ].map(([v, k, c]) => `<div class="figure"><div class="v ${c}">${v}</div><div class="k">${k}</div></div>`).join("");
+  ].map(([v, k, c]) => `<div class="figure glass"><div class="v ${c}">${v}</div><div class="k">${k}</div></div>`).join("");
   $("mtd-title").textContent = `${MONTH_NAMES[m.month - 1]} 1–${m.day} in every year`;
 }
 
