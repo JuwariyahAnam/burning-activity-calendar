@@ -105,6 +105,10 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     return d.lat >= s && d.lat <= n && d.lon >= w && d.lon <= e;
   };
 
+  // fires beyond the study area (other states, Pakistan) stay barely visible,
+  // so the edge of the data box does not show as a square
+  const outside = (d) => focusIds.size > 0 && !focusIds.has(d.district);
+
   // land shapes and fire dots: redrawn only when data, selection or size change
   function renderCache() {
     if (!proj) return;
@@ -133,7 +137,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     drawDots(g, dots.map((d) => {
       const [x, y] = proj.px(d.lat, d.lon);
       return { x, y, t: scaleT(d), r: Math.max(0.9, rMax * (0.4 + 0.6 * Math.sqrt(d.n / nMax))),
-               dim: inSelection(d) ? 1 : 0.22 };
+               dim: inSelection(d) ? 1 : outside(d) ? 0.06 : 0.22 };
     }));
   }
 
