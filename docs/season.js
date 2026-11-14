@@ -102,8 +102,19 @@ export function seasonCurve(meta, harm, yearFrom = -Infinity, yearTo = Infinity)
 // Critical periods: runs of days when usual burning is at least a quarter of
 // the year's peak, so a smaller second season (such as wheat stubble in spring)
 // is kept. Gaps of up to 10 days are merged and runs under a week dropped.
+// Where burning goes on for much of the year, the level is raised (up to 80%
+// of the peak) until the periods cover at most about four months, so they
+// still single out the critical weeks.
 export const CRITICAL_LEVEL = 0.25;
-export function criticalPeriods(med, level = CRITICAL_LEVEL) {
+export function criticalPeriods(med, level = CRITICAL_LEVEL, maxDays = 120) {
+  let lv = level, runs = [];
+  for (; lv <= 0.8 + 1e-9; lv += 0.05) {
+    runs = periodsAt(med, lv);
+    if (runs.reduce((n, r) => n + r.days, 0) <= maxDays) break;
+  }
+  return runs.map((r) => ({ ...r, level: Math.min(lv, 0.8) }));
+}
+function periodsAt(med, level) {
   const total = med.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
   if (!(total > 0)) return [];
   const top = Math.max(...med.filter(Number.isFinite));
