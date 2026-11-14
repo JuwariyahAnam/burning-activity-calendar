@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Burning Activity Calendar</title>
+<meta name="description" content="A harmonized MODIS and VIIRS burning activity calendar from NASA FIRMS active fire hotspots. NASA Space Apps Challenge 2026.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- AI disclosure: this page was drafted with Claude (Anthropic) and reviewed by the team. -->
+</head>
+<body>
+<div class="loading" id="loading" role="status">Loading the fire record…</div>
+
+<nav class="nav" aria-label="Main">
+  <a class="name" href="#top">Burning Activity Calendar</a>
+  <ul>
+    <li><a href="#record">The record</a></li>
+    <li><a href="#explore">Explore</a></li>
+    <li><a href="#trust">Method</a></li>
+    <li><a href="#limits">Limits</a></li>
+    <li><a href="#data">Get the data</a></li>
+  </ul>
+</nav>
+<div class="sample-banner" id="sample-banner" hidden>
+  Synthetic test data. These are not real fire observations.
+</div>
+
+<main id="top">
+  <!-- Hero: a year of real detections, replayed day by day -->
+  <header class="hero" id="hero">
+    <canvas id="hero-canvas" aria-hidden="true"></canvas>
+    <div class="hero-copy">
+      <h1>Every fire seen from orbit, on one calendar.</h1>
+      <p id="hero-text">NASA satellites have logged burning here for over two decades, with
+        two instruments that count differently. This calendar puts them on one scale, so you can
+        see when burning happens and whether this season is unusual.</p>
+      <div class="actions">
+        <a class="btn" href="#explore">Explore an area</a>
+        <a class="link" href="#record">See how the record was joined</a>
+      </div>
+    </div>
+    <div class="hero-clock" aria-hidden="true">
+      <div class="month" id="hero-month">January</div>
+      <div class="track" id="hero-track"></div>
+      <div class="note" id="hero-note">Each point is a 10 km grid cell. Brighter means it burned on this date in more years.</div>
+    </div>
+  </header>
+
+  <!-- Scroll story -->
+  <section class="story" id="record" aria-labelledby="record-title">
+    <div class="wrap intro">
+      <h2 id="record-title">Two satellites. Two different counts.</h2>
+      <p class="lede">Fire-days per year in <span class="region-name">the region</span>: the
+        number of 10 km grid cells with at least one detection, added up over every day.</p>
+    </div>
+    <div class="story-track">
+      <div class="story-chart">
+        <ul class="legend" id="story-legend"></ul>
+        <svg class="chart" id="story-svg" role="img" aria-labelledby="story-desc"></svg>
+        <p class="visually-hidden" id="story-desc">Line chart of fire-days per year from MODIS, VIIRS and the harmonized record.</p>
+      </div>
+      <div class="story-steps">
+        <div class="story-step" data-step="0"><div class="card">
+          <h3>MODIS, since 2001</h3>
+          <p>MODIS on the Terra and Aqua satellites sees the ground in <strong>1 km pixels</strong>.
+            Its record is long, and it is the only one before 2012.</p>
+        </div></div>
+        <div class="story-step" data-step="1"><div class="card">
+          <h3>VIIRS sees more</h3>
+          <p>From 2012, VIIRS looks in <strong>375 m pixels</strong>, about seven times smaller
+            in area. It catches small fires MODIS misses, so its counts are
+            <strong id="story-jump">far higher</strong>. Joining the two raw records would
+            invent a jump that never happened on the ground.</p>
+        </div></div>
+        <div class="story-step" data-step="2"><div class="card">
+          <h3>One consistent record</h3>
+          <p>In the years both instruments flew, we learn how their counts relate, month by
+            month. Applied to <span id="story-years">2001–2011</span>, it turns MODIS into <strong>VIIRS-equivalent</strong>
+            fire-days, so the record reads as one line.</p>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Explorer -->
+  <section class="explore" id="explore" aria-labelledby="explore-title">
+    <div class="wrap">
+      <div class="intro">
+        <h2 id="explore-title">Choose an area. See its burning calendar.</h2>
+        <p class="lede">Drag a rectangle on the map. The calendar, this month's comparison and
+          the downloads all update for that area.</p>
+      </div>
+
+      <div class="map" id="map" aria-label="Map of fire activity. Drag to choose an area, or type coordinates below.">
+        <div class="tiles" id="map-tiles"></div>
+        <canvas id="map-canvas"></canvas>
+        <div class="labels" id="map-labels"></div>
+        <button class="btn quiet reset" id="reset-area" type="button">Reset area</button>
+        <div class="hint" id="map-hint">Drag to choose an area</div>
+        <div class="credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a></div>
+      </div>
+
+      <form class="controls" id="controls" onsubmit="return false">
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+          <legend>Area (degrees)</legend>
+          <div class="coords">
+            <label class="visually-hidden" for="c-s">South</label><input id="c-s" type="number" step="0.1" placeholder="South">
+            <label class="visually-hidden" for="c-w">West</label><input id="c-w" type="number" step="0.1" placeholder="West">
+            <label class="visually-hidden" for="c-n">North</label><input id="c-n" type="number" step="0.1" placeholder="North">
+            <label class="visually-hidden" for="c-e">East</label><input id="c-e" type="number" step="0.1" placeholder="East">
+            <button class="btn quiet" id="apply-coords" type="button">Apply</button>
+          </div>
+        </fieldset>
+        <div class="field">
+          <span id="method-label">Calibration</span>
+          <div class="seg" role="group" aria-labelledby="method-label" id="method">
+            <button type="button" data-v="monthly" aria-pressed="true">By month</button>
+            <button type="button" data-v="simple" aria-pressed="false">One ratio</button>
+          </div>
+        </div>
+        <div class="field">
+          <span>Years</span>
+          <div class="coords">
+            <label class="visually-hidden" for="y-from">From</label><select id="y-from"></select>
+            <label class="visually-hidden" for="y-to">To</label><select id="y-to"></select>
+          </div>
+        </div>
+        <label class="switch"><input type="checkbox" id="aqua-only"> MODIS: Aqua only</label>
+        <label class="switch"><input type="checkbox" id="viirs-all"> VIIRS: all satellites</label>
+      </form>
+      <p class="message" id="message" hidden></p>
+
+      <div class="figures" id="figures" aria-live="polite"></div>
+
+      <div class="block">
+        <div class="block-head">
+          <div>
+            <h3>The burning calendar</h3>
+            <p class="muted small" id="cal-note">Each square is one month of harmonized fire-days.</p>
+          </div>
+          <div class="actions" style="justify-content:flex-end">
+            <div class="seg" role="group" aria-label="Calendar view" id="cal-mode">
+              <button type="button" data-v="activity" aria-pressed="true">Activity</button>
+              <button type="button" data-v="anomaly" aria-pressed="false">Compared with usual</button>
+            </div>
+            <button class="link" id="cal-table-toggle" type="button" style="background:none;border:0;cursor:pointer;font:inherit">View as table</button>
+          </div>
+        </div>
+        <div class="cal" id="calendar" role="grid" aria-label="Burning calendar"></div>
+        <div class="scale" id="cal-scale"></div>
+        <div class="table-wrap" id="cal-table" hidden></div>
+      </div>
+
+      <div class="block">
+        <div class="block-head">
+          <div>
+            <h3 id="mtd-title">This month against history</h3>
+            <p class="muted small">The same days of the month in every year, so a month in progress is compared fairly.</p>
+          </div>
+        </div>
+        <svg class="chart" id="mtd-svg" role="img" aria-labelledby="mtd-title"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust -->
+  <section id="trust" aria-labelledby="trust-title">
+    <div class="wrap">
+      <div class="intro">
+        <h2 id="trust-title">Can you trust the join?</h2>
+        <p class="lede">We compare the three years after VIIRS began with the three years
+          before. MODIS watched both periods with the same instrument, so its change is the real
+          one. A good harmonization should match it.</p>
+      </div>
+      <div class="verdict" id="verdict"></div>
+
+      <div class="two">
+        <div>
+          <h3>Tested on years it never saw</h3>
+          <p class="muted small">For each year both instruments flew, we calibrate on the other
+            years, predict that year's VIIRS fire-days from MODIS, and measure the error.</p>
+          <div class="table-wrap" id="validation"></div>
+        </div>
+        <div>
+          <h3>Scaling factors in use</h3>
+          <p class="muted small">VIIRS fire-days per MODIS fire-day, by calendar month, for the
+            selected area.</p>
+          <svg class="chart" id="k-svg" role="img" aria-label="Scaling factor by month"></svg>
+        </div>
+      </div>
+
+      <div class="block">
+        <h3>How the record is built</h3>
+        <ol class="steps">
+          <li><p><strong>Clean.</strong> MODIS confidence 30 or more, VIIRS nominal or high,
+            vegetation fires only, times converted to local dates.</p></li>
+          <li><p><strong>Count fire-days.</strong> A 10 km cell counts once per day if any
+            detection falls in it, removing duplicates and much of the pixel-size gap.</p></li>
+          <li><p><strong>One VIIRS satellite at a time.</strong> S-NPP while it flew, NOAA-20
+            after, so new satellites in 2018 and 2023 add no false jumps.</p></li>
+          <li><p><strong>Calibrate.</strong> Learn VIIRS ≈ k × MODIS from the overlap years,
+            either one k or one per calendar month.</p></li>
+          <li><p><strong>Join and test.</strong> Scale the MODIS-only years, then check the join
+            on held-out years and across the 2012 switch.</p></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- Limits -->
+  <section id="limits" aria-labelledby="limits-title">
+    <div class="wrap">
+      <div class="intro"><h2 id="limits-title">What the record can't tell you</h2></div>
+      <div class="limits">
+        <div><h3>Fewer detections isn't less burning</h3>
+          <p>These satellites pass in the early afternoon and at night. Fires lit after the
+            afternoon pass can be missed, and farmers in Punjab have shifted burning later in
+            the day. A drop in counts can mean a change in timing.</p></div>
+        <div><h3>Recent months can change</h3>
+          <p>The latest months use near-real-time data. NASA replaces it with science-quality
+            data about five months later, which can shift recent values slightly.</p></div>
+        <div><h3>An activity index, not burned area</h3>
+          <p>Fire-days count grid cells with at least one detection per day. They track how
+            much and how often an area burns, not how many fires there were or how large.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Data -->
+  <section id="data" aria-labelledby="data-title">
+    <div class="wrap">
+      <div class="intro">
+        <h2 id="data-title">Take the data with you</h2>
+        <p class="lede">Downloads cover the area and options you chose above.</p>
+      </div>
+      <div class="downloads">
+        <button class="btn" type="button" id="dl-monthly">Download monthly calendar (CSV)</button>
+        <button class="btn quiet" type="button" id="dl-daily">Download daily series (CSV)</button>
+        <button class="btn quiet" type="button" id="dl-cells">Download fire cell-days (CSV)</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Data: NASA FIRMS active fire products, MODIS Collection 6.1 and VIIRS 375 m (Suomi NPP,
+    NOAA-20). We acknowledge the use of data and imagery from NASA's Fire Information for
+    Resource Management System (FIRMS), part of NASA's Earth Science Data and Information System
+    (ESDIS). Base map © OpenStreetMap contributors © CARTO.</p>
+  <p>Built for the NASA Space Apps Challenge 2026, Harmonization of MODIS and VIIRS Hot Spots.
+    Parts of the code and text were drafted with an AI assistant (Claude) and reviewed by the team.
+    <a class="link" href="https://github.com/JuwariyahAnam/burning-activity-calendar">Source code</a></p>
+  <p id="data-note"></p>
+</footer>
+
+<div class="tooltip" id="tooltip" role="tooltip"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
