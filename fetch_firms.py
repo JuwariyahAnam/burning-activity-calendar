@@ -289,6 +289,11 @@ def fetch(job, key, bbox, step, cache, budget, workers):
                     print(f"  {done:,}/{left_days:,} days  "
                           f"(~{eta:.0f} min left for {product})")
                     next_report += 250
+        except KeyboardInterrupt:
+            # workers may be sleeping through a 10-minute pause; do not wait for them
+            print("\nStopped by you. Everything downloaded so far is saved; "
+                  "run the same command again to continue.", flush=True)
+            os._exit(130)
         except BaseException:
             for f in futures:
                 f.cancel()
