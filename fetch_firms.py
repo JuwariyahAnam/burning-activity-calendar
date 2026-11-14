@@ -29,6 +29,7 @@ How it works
 import argparse
 import csv
 import datetime as dt
+import http.client
 import io
 import json
 import os
@@ -49,17 +50,28 @@ PUNJAB_HARYANA = "73.8,27.6,77.6,32.6"          # west,south,east,north
 LIMIT, SAFETY = 5000, 300                        # transactions per 10 minutes
 
 
-def get(url, retries=4):
+def get(url, retries=6):
+    """GET with retries. Connection resets and timeouts are common on long
+    runs; any network error is retried with a growing pause."""
+    req = urllib.request.Request(
+        url, headers={"User-Agent": "burning-activity-calendar/1.0 (Space Apps 2026)"})
     for attempt in range(retries):
         try:
-            with urllib.request.urlopen(url, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=180) as r:
                 return r.read().decode("utf-8", "replace")
-        except (urllib.error.URLError, TimeoutError) as err:
+        except (OSError, http.client.HTTPException) as err:
+            # OSError covers URLError, HTTPError, timeouts and connection
+            # resets; HTTPException covers incomplete or malformed replies.
             if attempt == retries - 1:
-                raise
-            wait = 10 * (attempt + 1)
-            print(f"  network error ({err}); retrying in {wait}s")
+                raise NetworkError(f"{type(err).__name__}: {err}") from None
+            wait = (15, 30, 60, 90, 120)[min(attempt, 4)]
+            print(f"  network error ({type(err).__name__}); retry "
+                  f"{attempt + 1}/{retries - 1} in {wait}s")
             time.sleep(wait)
+
+
+class NetworkError(Exception):
+    pass
 
 
 class Budget:
@@ -205,7 +217,13 @@ def main():
 
     budget = Budget(a.key)
     for job in jobs:
-        fetch(job, a.key, a.bbox, a.step, cache, budget)
+        try:
+            fetch(job, a.key, a.bbox, a.step, cache, budget)
+        except NetworkError as err:
+            combine(job[1], cache, raw)
+            sys.exit(f"\nThe FIRMS server kept failing ({err}).\n"
+                     "Everything downloaded so far is saved. Wait a minute, "
+                     "then run the same command again to continue.")
         rows = combine(job[1], cache, raw)
         print(f"  wrote {raw / f'FIRMS_{job[1]}.csv'} ({rows:,} detections)\n")
     print('Done. Next: python prepare.py "raw/*.csv"')
