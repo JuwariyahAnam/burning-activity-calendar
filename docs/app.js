@@ -260,6 +260,7 @@ function wireControls() {
   $("dl-timing").addEventListener("click", downloadTiming);
   $("dl-districts").addEventListener("click", downloadDistricts);
   $("share").addEventListener("click", (e) => { writeUrl(); copyText(viewUrl(), e.currentTarget, "Link copied"); });
+  $("copy-coords").addEventListener("click", (e) => copyText($("firms-coords").textContent, e.currentTarget, "Copied"));
   $("copy-cite").addEventListener("click", (e) => copyText($("cite-view").textContent, e.currentTarget, "Citation copied"));
   $("compare-year").addEventListener("change", (e) => {
     state.compareYear = +e.target.value || null;
@@ -487,6 +488,23 @@ function rankText(r) {
   if (r.record) return `highest in ${r.years} years`;
   return `more than ${r.below} of ${r.years} years`;
 }
+// links to follow the alerts elsewhere: the feed, the data file, NASA FIRMS
+let feedChecked = false;
+function renderGetAlerts() {
+  if (current) $("alerts-json").href = `data/${current.slug}/alerts.json`;
+  if (!feedChecked) {           // older data builds have no feed yet: hide its buttons
+    feedChecked = true;
+    for (const id of ["alerts-rss", "alerts-json"]) {
+      fetch($(id).href, { method: "HEAD" }).then((r) => { $(id).hidden = !r.ok; }).catch(() => { $(id).hidden = true; });
+    }
+  }
+  const [s, w, n, e] = selBox(state.sel);
+  $("firms-coords").textContent = `west ${w}, south ${s}, east ${e}, north ${n}`;
+  const span = Math.max(n - s, (e - w) * Math.cos(((s + n) / 2) * Math.PI / 180));
+  const zoom = Math.max(4, Math.min(11, Math.log2(360 / Math.max(span, 0.05)) - 0.6));
+  $("firms-map").href = `https://firms.modaps.eosdis.nasa.gov/map/#d:24hrs;@${((w + e) / 2).toFixed(2)},${((s + n) / 2).toFixed(2)},${zoom.toFixed(1)}z`;
+}
+
 function renderAlerts() {
   const R = computeRecent();
   const ok = R && R.years >= 5 && R.from;
@@ -500,6 +518,7 @@ function renderAlerts() {
   const short = (d) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
   const span = `${short(R.from)} to ${short(R.to)}`;
   $("alerts-title").textContent = `Burning more than usual: last ${R.days} days`;
+  renderGetAlerts();
   $("alerts-lead").innerHTML = flagged.length
     ? `<b class="flag">${flagged.length} of ${list.length} districts</b> burned far more than usual from ${span}` +
       (flagged.some((r) => r.record) ? `, ${flagged.filter((r) => r.record).length} of them more than in any of the ${R.years} earlier years.` : ".")

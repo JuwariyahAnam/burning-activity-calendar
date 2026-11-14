@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+import alerts
 import boundaries
 import harmonize as hz
 
@@ -99,6 +100,13 @@ def write_index(root, all_regions):
                       "bbox": [s, w, n, e], "center": [(s + n) / 2, (w + e) / 2],
                       "from": int(first), "sample": meta.get("sample", False)})
     (root / "regions.json").write_text(json.dumps({"regions": items}, indent=1))
+    import regions as regions_mod
+    built = []
+    for r in all_regions:
+        f = root / r["slug"] / "alerts.json"
+        if f.exists():
+            built.append((r, json.loads(f.read_text(encoding="utf-8"))))
+    alerts.write_feed(root, built, regions_mod.site())
     for old in ["meta.json", "cells.bin", "districts.json", "hotspots.bin"]:   # single-area layout
         if (root / old).exists():
             (root / old).unlink()
@@ -171,6 +179,13 @@ def build(a):
             print(f"  wrote {dist_file} ({dist_file.stat().st_size / 1e6:.1f} MB)")
     elif dist_file.exists():
         dist_file.unlink()
+    if bnd:                                  # districts burning far more than usual
+        try:
+            al = alerts.compute(rows, cell_id, bnd, cov, None if snpp.empty else snpp.max())
+            alerts.save(out / "alerts.json", a.name, al)
+            print(f"  alerts: {len(al['flagged'])} district(s) far above usual, {al['from']} to {al['to']}")
+        except Exception as err:             # never block the build
+            print(f"  alerts skipped: {err}")
     meta["hotspots"] = None
     if bnd and old:
         meta["hotspots"] = reuse_hotspots(old, cell_id, hot_file)

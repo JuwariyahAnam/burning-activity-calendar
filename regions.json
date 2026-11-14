@@ -1,60 +1,88 @@
 {
-  "_about": "Study areas. bbox is west,south,east,north (degrees). states are matched to geoBoundaries ADM1 names (any alias). clip: true keeps only districts whose centre lies inside bbox (for part of a state). AI disclosure: drafted with Claude (Anthropic).",
-  "regions": [
-    {
-      "slug": "punjab-haryana",
-      "name": "Punjab & Haryana",
-      "bbox": "73.8,27.6,77.6,32.6",
-      "start": "2001-01-01",
-      "states": [["Punjab"], ["Haryana"]],
-      "clip": false,
-      "raw": "raw/*.csv",
-      "data": "data/cell_days.csv.gz",
-      "story": "Rice-straw burning after the October harvest, and wheat stubble in April and May."
-    },
-    {
-      "slug": "up-west",
-      "name": "Western Uttar Pradesh",
-      "bbox": "77.0,26.0,80.5,30.5",
-      "start": "2008-01-01",
-      "states": [["Uttar Pradesh"]],
-      "clip": true,
-      "raw": "raw/up-west/*.csv",
-      "data": "data/up-west/cell_days.csv.gz",
-      "story": "The eastern end of the rice-wheat belt, with the same October to November stubble season."
-    },
-    {
-      "slug": "madhya-pradesh",
-      "name": "Madhya Pradesh",
-      "bbox": "74.0,21.0,82.9,26.9",
-      "start": "2008-01-01",
-      "states": [["Madhya Pradesh"]],
-      "clip": false,
-      "raw": "raw/madhya-pradesh/*.csv",
-      "data": "data/madhya-pradesh/cell_days.csv.gz",
-      "story": "Wheat residue burning that peaks from March to May, plus fires in its forests."
-    },
-    {
-      "slug": "mizoram-manipur",
-      "name": "Mizoram & Manipur",
-      "bbox": "92.2,21.9,94.8,25.7",
-      "start": "2008-01-01",
-      "states": [["Mizoram"], ["Manipur"]],
-      "clip": false,
-      "raw": "raw/mizoram-manipur/*.csv",
-      "data": "data/mizoram-manipur/cell_days.csv.gz",
-      "story": "Shifting cultivation (jhum): hill plots cleared by fire, peaking in March and April."
-    },
-    {
-      "slug": "uttarakhand",
-      "name": "Uttarakhand",
-      "bbox": "77.5,28.7,81.1,31.5",
-      "start": "2008-01-01",
-      "states": [["Uttarakhand", "Uttaranchal"]],
-      "clip": false,
-      "raw": "raw/uttarakhand/*.csv",
-      "data": "data/uttarakhand/cell_days.csv.gz",
-      "story": "Himalayan forest fires in the dry pre-monsoon months, April to June."
-    }
-  ]
+ "_about": "Study areas. bbox is west,south,east,north (degrees). states are matched to geoBoundaries ADM1 names (any alias). clip: true keeps only districts whose centre lies inside bbox (for part of a state). AI disclosure: drafted with Claude (Anthropic).",
+ "site": "https://juwariyahanam.github.io/burning-activity-calendar/",
+ "regions": [
+  {
+   "slug": "punjab-haryana",
+   "name": "Punjab & Haryana",
+   "bbox": "73.8,27.6,77.6,32.6",
+   "start": "2001-01-01",
+   "states": [
+    [
+     "Punjab"
+    ],
+    [
+     "Haryana"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/*.csv",
+   "data": "data/cell_days.csv.gz",
+   "story": "Rice-straw burning after the October harvest, and wheat stubble in April and May."
+  },
+  {
+   "slug": "up-west",
+   "name": "Western Uttar Pradesh",
+   "bbox": "77.0,26.0,80.5,30.5",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Uttar Pradesh"
+    ]
+   ],
+   "clip": true,
+   "raw": "raw/up-west/*.csv",
+   "data": "data/up-west/cell_days.csv.gz",
+   "story": "The eastern end of the rice-wheat belt, with the same October to November stubble season."
+  },
+  {
+   "slug": "madhya-pradesh",
+   "name": "Madhya Pradesh",
+   "bbox": "74.0,21.0,82.9,26.9",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Madhya Pradesh"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/madhya-pradesh/*.csv",
+   "data": "data/madhya-pradesh/cell_days.csv.gz",
+   "story": "Wheat residue burning that peaks from March to May, plus fires in its forests."
+  },
+  {
+   "slug": "mizoram-manipur",
+   "name": "Mizoram & Manipur",
+   "bbox": "92.2,21.9,94.8,25.7",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Mizoram"
+    ],
+    [
+     "Manipur"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/mizoram-manipur/*.csv",
+   "data": "data/mizoram-manipur/cell_days.csv.gz",
+   "story": "Shifting cultivation (jhum): hill plots cleared by fire, peaking in March and April."
+  },
+  {
+   "slug": "uttarakhand",
+   "name": "Uttarakhand",
+   "bbox": "77.5,28.7,81.1,31.5",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Uttarakhand",
+     "Uttaranchal"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/uttarakhand/*.csv",
+   "data": "data/uttarakhand/cell_days.csv.gz",
+   "story": "Himalayan forest fires in the dry pre-monsoon months, April to June."
+  }
+ ]
 }

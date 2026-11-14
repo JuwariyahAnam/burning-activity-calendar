@@ -18,6 +18,11 @@ What it offers, for any study area, district or drawn rectangle:
   burning had happened, with trend tests (Theil-Sen slope, Mann-Kendall).
 - **Districts**: this month against usual and the long-term trend per district,
   with close-up maps of fire locations and intensity.
+- **Burning more than usual**: districts far above their usual level in the last
+  7, 14 or 30 days, outlined on the map, with a daily RSS feed
+  (`docs/data/alerts.xml`), a JSON file per area and a link to NASA FIRMS email
+  alerts for the same area.
+- **Compare two places**: any two areas or districts side by side, per 1,000 km².
 - **Validation**: held-out-year error and a jump test at the 2012 switch.
 - **Data out**: seven CSV downloads, a link that reopens the exact view, and a
   citation with the FIRMS product DOIs.
@@ -142,6 +147,7 @@ Cloud from the same repository.
 | `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
 | `regions.json`, `regions.py` | The study areas and a helper to read them |
 | `update.py` | Daily refresh: latest near-real-time fires, merged and rebuilt |
+| `alerts.py` | Districts far above usual, written as `alerts.json` per area and an RSS feed |
 | `.github/workflows/update.yml` | Optional daily update and publishing on GitHub |
 | `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe3d.js` (WebGL hero globe), `minimap.js` (place close-ups), `hotspots.js` (fire dots), `season.js` (typical year, outlook, season timing, trends) |
 | `app.py` | Streamlit app (alternative interface) |

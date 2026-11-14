@@ -233,6 +233,20 @@
         </div>
         <p class="alerts-lead" id="alerts-lead" aria-live="polite"></p>
         <div class="table-wrap glass panel"><table class="data alerts" id="alerts-table"></table></div>
+        <div class="get-alerts">
+          <h4>Get alerts</h4>
+          <div class="get-alerts-row">
+            <a class="btn quiet" id="alerts-rss" href="data/alerts.xml">Daily feed (RSS)</a>
+            <a class="btn quiet" id="alerts-json" href="data/alerts.json">This list as data (JSON)</a>
+            <a class="btn quiet" id="firms-alerts" href="https://firms.modaps.eosdis.nasa.gov/alerts/" target="_blank" rel="noopener">Email alerts from NASA FIRMS</a>
+            <a class="link" id="firms-map" href="https://firms.modaps.eosdis.nasa.gov/map/" target="_blank" rel="noopener">See the latest fires on the FIRMS map</a>
+          </div>
+          <p class="muted small">The feed lists, for every study area, the districts far above
+            usual in the last 7 days; it is refreshed whenever the data is updated. NASA FIRMS emails
+            every new fire it detects in an area (free sign-in): choose a custom region and enter
+            <span id="firms-coords"></span>
+            <button class="link copy" id="copy-coords" type="button">Copy</button></p>
+        </div>
       </div>
 
       <div class="block" id="districts-block" hidden>

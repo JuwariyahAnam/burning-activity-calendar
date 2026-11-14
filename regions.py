@@ -15,6 +15,11 @@ def load():
     return json.loads(CONFIG.read_text(encoding="utf-8"))["regions"]
 
 
+def site():
+    """Public address of the website (for links in the alerts feed), or ''."""
+    return json.loads(CONFIG.read_text(encoding="utf-8")).get("site", "")
+
+
 def pick(slug):
     """One region by slug, or all of them for 'all'."""
     regions = load()
