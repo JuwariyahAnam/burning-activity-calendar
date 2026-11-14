@@ -1,0 +1,8 @@
+# raw FIRMS downloads are large; commit only data/cell_days.csv.gz
+raw/
+tests/synthetic_raw/
+tests/cell_days.csv.gz
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
