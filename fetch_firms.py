@@ -51,7 +51,7 @@ FAMILIES = [
     ("VIIRS_NOAA20", "VIIRS_NOAA20_SP", "VIIRS_NOAA20_NRT", "2018-04-01"),
 ]
 PUNJAB_HARYANA = "73.8,27.6,77.6,32.6"          # west,south,east,north
-LIMIT, SAFETY = 5000, 300                        # transactions per 10 minutes
+LIMIT, SAFETY = 5000, 600                        # transactions per 10 minutes
 
 
 WAITS = (15, 30, 60, 120, 180, 300, 300)              # about 17 minutes in all
@@ -143,7 +143,9 @@ class Budget:
             if time.time() - self.window_start > 600:
                 self.used = self.synced = 0
                 self.window_start = time.time()
-            if self.used - self.synced >= 500:      # another run may share the key
+            # FIRMS can count more than one transaction per day of data, and other
+            # runs may share the key: check its own count every 200
+            if self.used - self.synced >= 200:
                 server = self.server_count()
                 if server is not None:
                     self.used = max(self.used, server)
