@@ -5,8 +5,52 @@ import { ember, reduceMotion, MONTH_NAMES } from "./viz.js";
 import { dayToDate } from "./engine.js";
 
 const RAD = Math.PI / 180;
-// Natural Earth land, public domain, via the world-atlas package
+// NASA Blue Marble (day) and Black Marble (night lights), public domain, as
+// redistributed in the three-globe package. Two mirrors each, tried in order.
+const DAY_URLS = ["https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg",
+                  "https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg"];
+const NIGHT_URLS = ["https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg",
+                    "https://unpkg.com/three-globe/example/img/earth-night.jpg"];
+// Fallback if the imagery can't load: Natural Earth land outlines via world-atlas
 const LAND_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json";
+const TEX_W = 2048, TEX_H = 1024;
+
+function loadImage(url) {
+  return new Promise((ok, fail) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => ok(img);
+    img.onerror = fail;
+    img.src = url;
+  });
+}
+async function loadTexture(urls) {
+  for (const url of urls) {
+    try {
+      const img = await loadImage(url);
+      const c = document.createElement("canvas");
+      c.width = TEX_W; c.height = TEX_H;
+      const g = c.getContext("2d");
+      g.drawImage(img, 0, 0, TEX_W, TEX_H);
+      return g.getImageData(0, 0, TEX_W, TEX_H).data;   // throws if CORS failed
+    } catch { /* try the next mirror */ }
+  }
+  return null;
+}
+// bilinear sample of an equirectangular RGBA texture into out[0..2]
+function sample(tex, lon, lat, out) {
+  const x = ((lon + 180) / 360) * TEX_W - 0.5, y = ((90 - lat) / 180) * TEX_H - 0.5;
+  const x0 = Math.floor(x), y0 = Math.max(0, Math.min(TEX_H - 2, Math.floor(y)));
+  const fx = x - x0, fy = Math.max(0, Math.min(1, y - y0));
+  const xa = ((x0 % TEX_W) + TEX_W) % TEX_W, xb = (xa + 1) % TEX_W;
+  const i00 = (y0 * TEX_W + xa) * 4, i10 = (y0 * TEX_W + xb) * 4;
+  const i01 = ((y0 + 1) * TEX_W + xa) * 4, i11 = ((y0 + 1) * TEX_W + xb) * 4;
+  for (let c = 0; c < 3; c++) {
+    out[c] = (tex[i00 + c] * (1 - fx) + tex[i10 + c] * fx) * (1 - fy) +
+             (tex[i01 + c] * (1 - fx) + tex[i11 + c] * fx) * fy;
+  }
+}
+const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // ------------------------------------------------------------- geometry
 const vec = (lat, lon) => [Math.cos(lat * RAD) * Math.cos(lon * RAD),
@@ -65,15 +109,74 @@ function landMask(polys, W = 2048, H = 1024) {
   return { mask, W, H };
 }
 
-// Render the lit globe once into an image.
-function renderGlobe(R, basis, land) {
+// Sun direction in view space: upper left, mostly toward the viewer.
+const SUN = (() => { const L = [-0.55, 0.42, 0.72], k = Math.hypot(...L); return L.map((v) => v / k); })();
+
+// Render the globe once into an image. With imagery: sunlit Blue Marble, a soft
+// terminator into Black Marble city lights, sun glint on water and atmosphere at
+// the rim. Without: the land-outline or graticule fallback below.
+function renderGlobe(R, basis, land, tex) {
+  if (tex?.day) return renderRealGlobe(R, basis, tex);
+  return renderSimpleGlobe(R, basis, land);
+}
+
+function renderRealGlobe(R, basis, { day, night }) {
   const size = Math.ceil(R * 2);
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
   const img = g.createImageData(size, size), d = img.data;
-  const L = [-0.42, 0.5, 0.76], ln = Math.hypot(...L);
-  L.forEach((v, i) => (L[i] = v / ln));
+  const { e, n, f } = basis, L = SUN;
+  // half vector between sun and viewer, for the specular glint
+  const H = [L[0], L[1], L[2] + 1], hk = Math.hypot(...H);
+  H.forEach((v, i) => (H[i] = v / hk));
+  const dc = [0, 0, 0], nc = [0, 0, 0];
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      const nx = (px + 0.5 - R) / R, ny = (R - py - 0.5) / R, d2 = nx * nx + ny * ny;
+      if (d2 > 1) continue;
+      const nz = Math.sqrt(1 - d2), r = Math.sqrt(d2);
+      const P0 = nx * e[0] + ny * n[0] + nz * f[0], P1 = nx * e[1] + ny * n[1] + nz * f[1];
+      const P2 = nx * e[2] + ny * n[2] + nz * f[2];
+      const lat = Math.asin(Math.max(-1, Math.min(1, P2))) / RAD;
+      const lon = Math.atan2(P1, P0) / RAD;
+      sample(day, lon, lat, dc);
+      const ndl = nx * L[0] + ny * L[1] + nz * L[2];
+      const lit = smooth(-0.1, 0.25, ndl);                  // 0 night, 1 day
+      const diffuse = 0.06 + 1.0 * Math.max(0, ndl) ** 0.75;
+      let cr = dc[0] * diffuse, cg = dc[1] * diffuse, cb = dc[2] * diffuse;
+      // city lights on the night side
+      if (night && lit < 1) {
+        sample(night, lon, lat, nc);
+        const k = (1 - lit) * 1.15;
+        cr += nc[0] * k; cg += nc[1] * k * 0.92; cb += nc[2] * k * 0.7;
+      }
+      // sun glint where the surface is water (dark, blue-dominant pixels)
+      const water = dc[2] > dc[0] + 12 && dc[2] >= dc[1] && dc[0] + dc[1] + dc[2] < 260;
+      if (water) {
+        const s = Math.max(0, nx * H[0] + ny * H[1] + nz * H[2]) ** 60 * 0.55 * lit;
+        cr += 255 * s; cg += 245 * s; cb += 230 * s;
+      }
+      // atmosphere: thicker toward the rim, brighter on the sunlit side
+      const rim = (1 - nz) ** 2.4;
+      const a = Math.min(0.9, rim * (0.25 + 0.95 * smooth(-0.35, 0.6, ndl)) + 0.05 * lit);
+      cr += (110 - cr) * a; cg += (175 - cg) * a; cb += (255 - cb) * a;
+      const k = (py * size + px) * 4;
+      d[k] = cr; d[k + 1] = cg; d[k + 2] = cb;
+      d[k + 3] = 255 * Math.min(1, (1 - r) * R);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+function renderSimpleGlobe(R, basis, land) {
+  const size = Math.ceil(R * 2);
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  const img = g.createImageData(size, size), d = img.data;
+  const L = SUN;
   const { e, n, f } = basis;
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
@@ -164,13 +267,21 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
   const viewLon = centre[1] - 6;
   const basis = viewBasis(centre[0] - 12, viewLon);   // region sits up and right of centre
   trackEl.replaceChildren(...MONTH_NAMES.map(() => document.createElement("span")));
-  let land = null, ctx, W, H, dpr, stars, globeImg, G, lens, lensCtx, lensProj;
+  let land = null, tex = null, ctx, W, H, dpr, stars, globeImg, G, lens, lensCtx, lensProj;
+  let textBox = { x0: 0, y0: 0, x1: 0, y1: 0 };
+  // keep satellites and their labels off the headline and paragraph
+  const overText = (x0, y0, x1, y1) =>
+    x1 > textBox.x0 && x0 < textBox.x1 && y1 > textBox.y0 && y0 < textBox.y1;
   let t0 = 0, doy = 273, month = -1, running = false, visible = true, last = 0;
 
-  fetch(LAND_URL).then((r) => r.json()).then((topo) => {
-    land = landMask(topoRings(topo, "land"));
-    layout();
-  }).catch(() => {});      // the graticule globe still works offline
+  // Imagery first; land outlines only if it can't load; graticule if neither does.
+  Promise.all([loadTexture(DAY_URLS), loadTexture(NIGHT_URLS)]).then(([day, night]) => {
+    if (day) { tex = { day, night }; layout(); return; }
+    return fetch(LAND_URL).then((r) => r.json()).then((topo) => {
+      land = landMask(topoRings(topo, "land"));
+      layout();
+    });
+  }).catch(() => {});
 
   function layout() {
     dpr = Math.min(2, devicePixelRatio || 1);
@@ -179,6 +290,9 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
     ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const copy = canvas.parentElement.querySelector(".hero-copy");
+    const cb = copy.getBoundingClientRect(), hb = canvas.getBoundingClientRect();
+    textBox = { x0: cb.left - hb.left - 12, y0: cb.top - hb.top + 40,
+                x1: cb.right - hb.left + 12, y1: cb.bottom - hb.top + 12 };
     if (W >= 960) {
       const R = Math.min(H * 0.36, W * 0.24);
       G = { x: W * 0.72, y: H * 0.5, R };
@@ -191,9 +305,10 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
     }
     stars = starField(Math.ceil(W), Math.ceil(H));
     const gr = Math.round(G.R * Math.min(dpr, 1.5));
-    if (!globeImg || Math.abs(gr - globeImg._r) > 2 || globeImg._land !== !!land) {
-      globeImg = renderGlobe(gr, basis, land);   // slow step: only when size or data changes
-      globeImg._r = gr; globeImg._land = !!land;
+    const kind = tex ? "tex" : land ? "land" : "grid";
+    if (!globeImg || Math.abs(gr - globeImg._r) > 2 || globeImg._kind !== kind) {
+      globeImg = renderGlobe(gr, basis, land, tex);   // slow step: only when size or data changes
+      globeImg._r = gr; globeImg._kind = kind;
     }
     // lens: the region's grid cells fitted into a circle
     const size = Math.ceil(lens.r * 2 * dpr);
@@ -255,6 +370,7 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
       const a = (s.phase + time / 26000) * Math.PI * 2;
       const p = orbitPoint(s, a);
       if (p.hidden || (front ? p.z < 0 : p.z >= 0)) continue;
+      if (overText(p.sx - 10, p.sy - 20, p.sx + 80, p.sy + 12)) continue;
       ctx.globalAlpha = front ? 1 : 0.4;
       const glow = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, 10);
       glow.addColorStop(0, s.color); glow.addColorStop(1, "rgba(0,0,0,0)");
@@ -292,10 +408,14 @@ export function createGlobeHero(canvas, meta, rows, { monthEl, trackEl, clockEl 
   function compose(time, day) {
     ctx.clearRect(0, 0, W, H);
     ctx.drawImage(stars, 0, 0, W, H);
-    // halo
-    const halo = ctx.createRadialGradient(G.x, G.y, G.R * 0.9, G.x, G.y, G.R * 1.55);
-    halo.addColorStop(0, "rgba(70,150,255,0.30)"); halo.addColorStop(1, "rgba(70,150,255,0)");
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(G.x, G.y, G.R * 1.55, 0, Math.PI * 2); ctx.fill();
+    // wide faint halo, then a thin bright limb shifted toward the sun
+    const halo = ctx.createRadialGradient(G.x, G.y, G.R * 0.9, G.x, G.y, G.R * 1.5);
+    halo.addColorStop(0, "rgba(70,150,255,0.22)"); halo.addColorStop(1, "rgba(70,150,255,0)");
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(G.x, G.y, G.R * 1.5, 0, Math.PI * 2); ctx.fill();
+    const lx = G.x + SUN[0] * G.R * 0.025, ly = G.y - SUN[1] * G.R * 0.025;
+    const limb = ctx.createRadialGradient(lx, ly, G.R * 0.97, lx, ly, G.R * 1.07);
+    limb.addColorStop(0, "rgba(150,205,255,0.55)"); limb.addColorStop(1, "rgba(150,205,255,0)");
+    ctx.fillStyle = limb; ctx.beginPath(); ctx.arc(lx, ly, G.R * 1.07, 0, Math.PI * 2); ctx.fill();
     drawOrbits(false); drawSats(time, false);
     ctx.drawImage(globeImg, G.x - G.R, G.y - G.R, G.R * 2, G.R * 2);
     // the region glows with the day's activity
