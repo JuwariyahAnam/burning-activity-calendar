@@ -44,6 +44,12 @@ def main():
                    help="skip downloading state and district boundaries")
     p.add_argument("--adm1", help="local geoBoundaries IND ADM1 GeoJSON (optional)")
     p.add_argument("--adm2", help="local geoBoundaries IND ADM2 GeoJSON (optional)")
+    p.add_argument("--raw", default="raw/*.csv",
+                   help="raw FIRMS CSVs for the district close-up maps (fire locations "
+                        "and intensity); skipped if none are found")
+    p.add_argument("--fine", type=float, default=0.02,
+                   help="close-up map spot size in degrees (must divide --cell)")
+    p.add_argument("--tz", type=float, default=5.5, help="hours ahead of UTC, as prepare.py")
     a = p.parse_args()
 
     cd = pd.read_csv(a.data, parse_dates=["local_date"])
@@ -93,8 +99,8 @@ def main():
         "generated": dt.date.today().isoformat(),
         "sample": bool(a.sample),
     }
-    (out / "meta.json").write_text(json.dumps(meta, separators=(",", ":")))
-    dist_file = out / "districts.json"
+    dist_file, hot_file = out / "districts.json", out / "hotspots.bin"
+    bnd = None
     if not a.no_districts:
         bnd = boundaries.build(meta["cells"], meta["extent"],
                                [x.strip() for x in a.states.split(",")], a.adm1, a.adm2)
@@ -103,11 +109,77 @@ def main():
             print(f"  wrote {dist_file} ({dist_file.stat().st_size / 1e6:.1f} MB)")
     elif dist_file.exists():
         dist_file.unlink()
+    meta["hotspots"] = None
+    if bnd:
+        meta["hotspots"] = export_hotspots(a, meta, cell_id, bnd["cellDistrict"], cd, hot_file)
+    if meta["hotspots"] is None and hot_file.exists():
+        hot_file.unlink()
+    (out / "meta.json").write_text(json.dumps(meta, separators=(",", ":")))
     size = (out / "cells.bin").stat().st_size / 1e6
     print(f"{len(day):,} cell-days, {len(cells):,} grid cells, "
           f"cells.bin {size:.1f} MB -> {out}")
     for k, (lo, hi) in cov.items():
         print(f"  {k}: {lo.date()} to {hi.date()}")
+
+
+def export_hotspots(a, meta, cell_id, cell_district, cd, path):
+    """Fire locations and intensity for the district close-up maps.
+
+    Detections are grouped into small spots (a.fine degrees) per year, keeping
+    one sensor per year so dot density is comparable within a year: MODIS before
+    VIIRS began, then VIIRS S-NPP, then NOAA-20 after S-NPP ended. Each record:
+    parent grid cell, spot within it, year, number of detections and mean fire
+    radiative power (FRP, megawatts), the satellite measure of fire intensity.
+    """
+    import glob
+    files = sorted(glob.glob(a.raw))
+    if not files:
+        print(f"Close-up maps: no raw files at {a.raw}; skipped (run fetch_firms.py first).")
+        return None
+    k = int(round(a.cell / a.fine))
+    if abs(k * a.fine - a.cell) > 1e-9 or k > 15:
+        raise SystemExit("--fine must divide --cell into at most 15 parts")
+    parts = []
+    for path_ in files:
+        c = hz.clean(hz.read_firms_csv(path_), tz_hours=a.tz)
+        parts.append(c[["instrument", "satellite", "latitude", "longitude", "local_date", "frp"]])
+    det = pd.concat(parts).drop_duplicates(["satellite", "latitude", "longitude", "local_date", "frp"])
+    viirs_start = cd.loc[cd["instrument"] == "VIIRS", "local_date"].min()
+    snpp_end = cd.loc[cd["satellite"] == "SNPP", "local_date"].max()
+    switch = viirs_start.year if pd.notna(viirs_start) else 9999
+    year = det["local_date"].dt.year
+    keep = ((det["instrument"] == "MODIS") & (year < switch)) | (
+        (det["instrument"] == "VIIRS") & (year >= switch) & (
+            (det["satellite"] == "SNPP") |
+            ((det["satellite"] == "NOAA20") & (pd.isna(snpp_end) | (det["local_date"] > snpp_end)))))
+    det = det[keep].copy()
+    # parent grid cell (same rule as prepare.py) and the spot inside it
+    clat = (np.floor(det["latitude"] / a.cell) * a.cell + a.cell / 2).round(4)
+    clon = (np.floor(det["longitude"] / a.cell) * a.cell + a.cell / 2).round(4)
+    ix = np.clip(((det["longitude"] - (clon - a.cell / 2)) / a.fine).astype(int), 0, k - 1)
+    iy = np.clip(((det["latitude"] - (clat - a.cell / 2)) / a.fine).astype(int), 0, k - 1)
+    det["cell"] = [cell_id.get((la, lo), -1) for la, lo in zip(clat, clon)]
+    det["sub"] = (iy * k + ix).astype(int)
+    det["year"] = det["local_date"].dt.year
+    det = det[det["cell"] >= 0]
+    det = det[np.asarray(cell_district)[det["cell"].to_numpy()] >= 0]   # inside a district
+    if det.empty:
+        print("Close-up maps: no detections inside districts; skipped.")
+        return None
+    g = (det.groupby(["cell", "sub", "year"])
+           .agg(n=("frp", "size"), frp=("frp", "mean")).reset_index())
+    year0 = int(g["year"].min())
+    with open(path, "wb") as f:
+        f.write(g["cell"].to_numpy("<u2").tobytes())
+        f.write(np.minimum(g["n"], 65535).to_numpy("<u2").tobytes())
+        frp10 = np.minimum(np.nan_to_num(g["frp"].to_numpy(float)) * 10, 65535).round()
+        f.write(frp10.astype("<u2").tobytes())
+        f.write(g["sub"].to_numpy("u1").tobytes())
+        f.write((g["year"] - year0).to_numpy("u1").tobytes())
+    info = {"rows": int(len(g)), "fine": a.fine, "per": k, "year0": year0, "switchYear": int(switch)}
+    print(f"Close-up maps: {len(det):,} detections -> {len(g):,} spots "
+          f"({path.stat().st_size / 1e6:.1f} MB); MODIS before {switch}, VIIRS from {switch}.")
+    return info
 
 
 if __name__ == "__main__":

@@ -32,7 +32,10 @@ streamlit run app.py
 The `docs/` folder is a static site: an animated hero of a year of fire,
 a scroll story of the MODIS-to-VIIRS join, and an explorer where you drag
 an area on the map to get its burning calendar, this month against
-history, validation figures and CSV downloads. All harmonization runs in
+history, validation figures and CSV downloads. Clicking a district opens a
+close-up map with red dots where fires were detected, coloured by fire
+intensity (mean fire radiative power) and sized by number of detections;
+`build_site.py` builds it from the raw FIRMS files in `raw/`. All harmonization runs in
 the browser (`docs/engine.js`, a port of `harmonize.py`; run
 `python tests/engine_parity.py` to check both give identical numbers).
 

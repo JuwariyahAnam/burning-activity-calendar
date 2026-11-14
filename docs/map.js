@@ -3,14 +3,14 @@
 // AI disclosure: drafted with Claude (Anthropic); reviewed by the team.
 import { ember, fmt, showTip, hideTip } from "./viz.js";
 
-const merc = (lat, lon) => {
+export const merc = (lat, lon) => {
   const s = Math.sin((lat * Math.PI) / 180);
   return [(lon + 180) / 360, 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)];
 };
 const unmerc = (x, y) => [
   (Math.atan(Math.sinh(Math.PI * (1 - 2 * y))) * 180) / Math.PI, x * 360 - 180];
 
-function fit(ext, W, H, pad) {
+export function fit(ext, W, H, pad) {
   const [x0, y1] = merc(ext[0], ext[1]);
   const [x1, y0] = merc(ext[2], ext[3]);
   const scale = Math.min((W - pad.l - pad.r) / (x1 - x0), (H - pad.t - pad.b) / (y1 - y0));
@@ -24,7 +24,7 @@ function fit(ext, W, H, pad) {
   };
 }
 
-function setupCanvas(canvas) {
+export function setupCanvas(canvas) {
   const dpr = Math.min(2, devicePixelRatio || 1);
   const W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
@@ -44,7 +44,7 @@ export function inRings(rings, lon, lat) {
   }
   return inside;
 }
-function ringsBox(rings) {
+export function ringsBox(rings) {
   let s = 90, w = 180, n = -90, e = -180;
   for (const r of rings) for (const [x, y] of r) { s = Math.min(s, y); n = Math.max(n, y); w = Math.min(w, x); e = Math.max(e, x); }
   return [s, w, n, e];
@@ -60,7 +60,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
   const focus = new Set(districts?.focus || []);
   D.forEach((x) => (x.box = ringsBox(x.rings)));
   let heat = new Float32Array(meta.cells.length), max = 1, selection = null, hover = -1;
-  let drag = null, proj, ctx, W, H, paths = null;
+  let drag = null, proj, ctx, W, H, paths = null, inset = 0;
 
   // the view: the focus states if known, else the data
   let ext;
@@ -75,7 +75,8 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
 
   function layout() {
     ({ ctx, W, H } = setupCanvas(canvas));
-    proj = fit(ext, W, H, W < 700 ? { l: 10, r: 10, t: 58, b: 112 } : { l: 230, r: 150, t: 16, b: 16 });
+    proj = fit(ext, W, H, W < 700 ? { l: 10, r: 10, t: 58, b: 112 }
+      : inset ? { l: W - inset > 760 ? 230 : 20, r: inset + 24, t: 50, b: 16 } : { l: 230, r: 150, t: 16, b: 16 });
     placeTiles(tiles, "dark_nolabels");
     placeTiles(labels, "dark_only_labels");
     paths = buildPaths();
@@ -259,6 +260,8 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
       if (ctx) draw();
       return max;
     },
+    // room on the right for the close-up panel (0 when it is closed)
+    setInset(px) { if (px !== inset) { inset = px; if (ctx) layout(); } },
     setSelection(sel) {
       selection = sel.kind === "districts" ? { kind: "districts", ids: new Set(sel.ids) } : sel;
       if (ctx) draw();

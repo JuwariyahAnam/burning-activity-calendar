@@ -58,6 +58,8 @@ export function showTip(evt, html) {
   let x = evt.clientX + pad, y = evt.clientY + pad;
   if (x + r.width > innerWidth - 8) x = evt.clientX - r.width - pad;
   if (y + r.height > innerHeight - 8) y = evt.clientY - r.height - pad;
+  x = Math.max(8, Math.min(x, innerWidth - r.width - 8));
+  y = Math.max(8, y);
   t.style.left = `${x}px`;
   t.style.top = `${y}px`;
 }

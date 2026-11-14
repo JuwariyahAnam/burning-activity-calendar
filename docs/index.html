@@ -108,8 +108,29 @@
         <canvas id="map-canvas"></canvas>
         <div class="labels" id="map-labels"></div>
         <button class="btn quiet reset" id="reset-area" type="button">Reset area</button>
-        <div class="hint" id="map-hint">Click a district, or drag to draw an area</div>
+        <div class="hint" id="map-hint">Click a district for a close-up, or drag to draw an area</div>
         <div class="map-legend" id="map-legend"></div>
+        <section class="mini" id="mini" hidden role="dialog" aria-label="District close-up map">
+          <div class="mini-head">
+            <div>
+              <h4 class="mini-title"></h4>
+              <p class="mini-sub"></p>
+            </div>
+            <button class="mini-close" type="button" aria-label="Close the close-up map">×</button>
+          </div>
+          <div class="seg mini-years" role="group" aria-label="Years shown">
+            <button type="button" data-v="latest" aria-pressed="true">This year</button>
+            <button type="button" data-v="span" aria-pressed="false">All years</button>
+          </div>
+          <div class="mini-map">
+            <div class="tiles"></div>
+            <canvas aria-label="Fire spots in the district"></canvas>
+            <div class="labels"></div>
+          </div>
+          <div class="mini-legend"></div>
+          <p class="mini-stats"></p>
+          <p class="mini-credit">Fire data NASA FIRMS. Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a></p>
+        </section>
         <div class="credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a></div>
       </div>
 

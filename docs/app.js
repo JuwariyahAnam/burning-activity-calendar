@@ -5,12 +5,13 @@ import { lineChart, renderCalendar, calendarTable, barChart, showTip, fmt, pct, 
          ember, COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
 import { createMap } from "./map.js";
 import { createGlobeHero } from "./globe.js";
+import { createMiniMap } from "./minimap.js";
 
 const $ = (id) => document.getElementById(id);
 // selection: { kind: "bbox", bbox } or { kind: "districts", ids: [...] }
 const state = { sel: null, method: "monthly", aquaOnly: false, viirsAll: false,
                 yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false };
-let meta, rows, result, map, districts = null, defaultSel, dStats = null, regionK = null;
+let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
 
 async function load() {
   try {
@@ -37,8 +38,14 @@ async function load() {
     { monthEl: $("hero-month"), trackEl: $("hero-track"), clockEl: $("hero-clock"), districts });
   $("hero-note").textContent = `${meta.region}: fires on each date, all years. Brighter cells burned on that date in more years.`;
   story();
-  map = createMap($("map"), meta, { districts, onSelect: (sel) => { state.sel = sel; update(); },
-                                    describe: describeDistrict });
+  map = createMap($("map"), meta, { districts, describe: describeDistrict, onSelect: (sel) => {
+    state.sel = sel; update();
+    // a clicked district opens its close-up map; a drawn rectangle closes it
+    if (mini && sel.kind === "districts" && sel.ids.length === 1) mini.open(sel.ids[0], [state.yearFrom, state.yearTo]);
+    else mini?.close();
+  } });
+  if (districts) mini = createMiniMap($("mini"), meta, districts, rows,
+    { onToggle: (w) => map.setInset(innerWidth >= 700 ? w : 0) });
   wireControls();
   update();
   $("loading").classList.add("done");
@@ -107,18 +114,19 @@ function wireControls() {
   seg("cal-mode", "calMode", renderCalendarBlock);
   $("aqua-only").addEventListener("change", (e) => { state.aquaOnly = e.target.checked; update(); });
   $("viirs-all").addEventListener("change", (e) => { state.viirsAll = e.target.checked; update(); });
-  $("reset-area").addEventListener("click", () => { state.sel = defaultSel; update(); });
+  $("reset-area").addEventListener("click", () => { state.sel = defaultSel; mini?.close(); update(); });
   $("apply-coords").addEventListener("click", () => {
     const v = ["c-s", "c-w", "c-n", "c-e"].map((id) => parseFloat($(id).value));
     if (v.some((x) => !Number.isFinite(x)) || v[0] >= v[2] || v[1] >= v[3]) {
       return message("Enter South below North and West left of East, in degrees.");
     }
-    state.sel = { kind: "bbox", bbox: v }; update();
+    state.sel = { kind: "bbox", bbox: v }; mini?.close(); update();
   });
   for (const id of ["y-from", "y-to"]) $(id).addEventListener("change", () => {
     state.yearFrom = +$("y-from").value; state.yearTo = +$("y-to").value;
     if (state.yearFrom > state.yearTo) [state.yearFrom, state.yearTo] = [state.yearTo, state.yearFrom];
     renderAll();
+    mini?.setYears([state.yearFrom, state.yearTo]);
   });
   $("cal-table-toggle").addEventListener("click", (e) => {
     const t = $("cal-table"); t.hidden = !t.hidden;
@@ -344,6 +352,7 @@ function renderDistricts() {
     const pick = () => {
       state.sel = { kind: "districts", ids: [+tr.dataset.id] };
       update();
+      mini?.open(+tr.dataset.id, [state.yearFrom, state.yearTo]);
       $("map").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
     };
     tr.addEventListener("click", pick);
