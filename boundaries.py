@@ -12,10 +12,17 @@ not an authoritative depiction of any border.
 Used by build_site.py. Works without shapely: plain NumPy point-in-polygon.
 """
 import json
+import unicodedata
 import urllib.request
 from pathlib import Path
 
 import numpy as np
+
+
+def plain(name):
+    """'Haryāna' -> 'Haryana'. geoBoundaries spells many Indian names with
+    diacritics; the site and the state matching use the plain spelling."""
+    return "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
 
 API = "https://www.geoboundaries.org/api/current/gbOpen/IND/{level}/"
 RAW = ("https://github.com/wmgeolab/geoBoundaries/raw/main/releaseData/gbOpen/"
@@ -162,7 +169,7 @@ def build(cells, extent, focus_states, adm1=None, adm2=None, tol=0.006, clip=Non
     for f in g1["features"]:
         polys = polygons(f["geometry"])
         if polys and near(polys):
-            states.append({"name": f["properties"].get("shapeName", "?"), "polys": polys})
+            states.append({"name": plain(f["properties"].get("shapeName", "?")), "polys": polys})
     lat = np.array([c[0] for c in cells]); lon = np.array([c[1] for c in cells])
     cell_district = np.full(len(cells), -1, int)
     districts = []
@@ -170,7 +177,7 @@ def build(cells, extent, focus_states, adm1=None, adm2=None, tol=0.006, clip=Non
         polys = polygons(f["geometry"])
         if not polys or not near(polys):
             continue
-        name = f["properties"].get("shapeName", "?")
+        name = plain(f["properties"].get("shapeName", "?"))
         inside = contains(polys, lon, lat) & (cell_district < 0)
         cx, cy = centroid(polys)
         if not contains(polys, [cx], [cy])[0] and inside.any():
@@ -191,7 +198,7 @@ def build(cells, extent, focus_states, adm1=None, adm2=None, tol=0.006, clip=Non
             for i in np.flatnonzero(hit):
                 if not districts[i]["state"]:
                     districts[i]["state"] = st["name"]
-    norm = lambda x: " ".join(x.lower().replace("&", "and").split())
+    norm = lambda x: " ".join(plain(x).lower().replace("&", "and").split())
     wanted = [{norm(n) for n in group} for group in focus_states]
     focus = [st["name"] for st in states if any(norm(st["name"]) in g for g in wanted)]
     unmatched = [g for g in focus_states if not any(norm(st["name"]) in {norm(n) for n in g} for st in states)]

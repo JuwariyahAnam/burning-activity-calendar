@@ -97,6 +97,7 @@ export function lineChart(svg, { series, height, yLabel, marker }) {
 
   function render() {
     const W = svg.clientWidth || svg.parentElement.clientWidth;
+    if (W < 80) return;                    // not laid out yet; drawn again on resize
     const H = typeof height === "function" ? height() : height;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
     svg.setAttribute("height", H);
@@ -250,6 +251,7 @@ function drawBars(svg) {
           color = "#4a5470", hiColor = "#f17f3a", labelEvery } = svg._bar;
   {
     const W = svg.clientWidth || svg.parentElement.clientWidth;
+    if (W < 80) return;                    // not laid out yet; drawn again on resize
     const H = height;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
     svg.setAttribute("height", H);
