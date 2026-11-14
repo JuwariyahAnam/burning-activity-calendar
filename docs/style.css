@@ -100,23 +100,83 @@ a { color: inherit; }
   font-size: clamp(2.7rem, 6.4vw, 5.6rem); line-height: 0.98; margin: 0 0 1.3rem;
   font-weight: 700; font-stretch: 85%; letter-spacing: -0.035em;
 }
-.hero p { color: var(--ink-2); font-size: clamp(1.05rem, 1.5vw, 1.25rem); margin: 0 0 2rem; }
-/* positioned next to the fire lens by globe.js */
-.hero-clock { position: absolute; z-index: 2; width: 13.5rem; pointer-events: none; }
+.hero-copy p { color: var(--ink-2); font-size: clamp(1.05rem, 1.5vw, 1.25rem); margin: 0 0 2rem; }
+/* hero globe: WebGL layer, 2D overlay on top, copy above both */
+.hero canvas.globe-gl, .hero canvas.globe-over { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero canvas.globe-over { z-index: 1; }
+.hero-copy { z-index: 2; transition: opacity .7s ease, transform .9s cubic-bezier(.2,.7,.2,1); }
+.hero.zoomed .hero-copy { opacity: 0; transform: translateX(-28px); pointer-events: none; }
 @media (min-width: 960px) {
   .hero { height: 100svh; min-height: 700px; padding: 0; display: flex; align-items: center; }
   .hero-copy { text-align: left; margin: 0 0 0 max(var(--pad), calc((100vw - var(--wide)) / 2));
-               padding: var(--nav-h) 0 0; width: 42%; max-width: 35rem; }
+               padding: var(--nav-h) 0 0; width: 42%; max-width: 35rem; pointer-events: none; }
+  .hero-copy .actions, .hero-copy a, .hero-copy button { pointer-events: auto; }
   .hero .actions { justify-content: flex-start; }
   .hero::after { height: 12vh; }
 }
-.hero-clock .month { font-size: clamp(1.3rem, 2.2vw, 1.8rem); font-weight: 600;
-                     font-stretch: 85%; letter-spacing: -0.02em; line-height: 1.1; }
-.hero-clock .track { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px;
-                     margin-top: 0.5rem; }
-.hero-clock .track span { height: 3px; border-radius: 2px; background: var(--rim); }
-.hero-clock .track span.on { background: var(--accent); }
-.hero-clock .note { color: var(--ink-3); font-size: 0.76rem; line-height: 1.35; margin-top: 0.5rem; }
+.hero .globe-hint {
+  position: absolute; z-index: 2; bottom: 7vh; left: 72%; transform: translateX(-50%); margin: 0;
+  font-size: 0.86rem; color: var(--ink-2); display: inline-flex; align-items: center; gap: 0.55rem;
+  pointer-events: none; transition: opacity .5s;
+}
+@media (max-width: 959px) { .hero .globe-hint { left: 50%; bottom: 3vh; } }
+.hero.zoomed .globe-hint { opacity: 0; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); position: relative; }
+.pulse::after { content: ""; position: absolute; inset: -6px; border-radius: 50%;
+                border: 1px solid var(--accent); animation: pulse 2s ease-out infinite; }
+@keyframes pulse { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.places {
+  position: absolute; z-index: 3; left: 50%; bottom: 5vh; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; justify-content: center;
+  padding: 0.55rem; border-radius: 999px; max-width: calc(100% - 1.5rem);
+  background: rgba(6,16,34,0.78); border: 1px solid var(--glass-edge); backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px); animation: rise .6s cubic-bezier(.2,.7,.2,1) both;
+}
+.places[hidden] { display: none; }
+.places .btn { padding: 0.6rem 1.1rem; font-size: 0.9rem; }
+.places-label { color: var(--ink-3); font-size: 0.85rem; padding-left: 0.2rem; }
+.places-sep { width: 1px; height: 22px; background: var(--glass-edge); }
+.chip {
+  font: 500 0.9rem var(--font); color: var(--ink); cursor: pointer; padding: 0.55rem 1rem; margin: 0 0.15rem;
+  border-radius: 999px; background: rgba(241,127,58,0.12); border: 1px solid rgba(241,127,58,0.45);
+}
+.chip:hover { background: rgba(241,127,58,0.24); }
+.hero .places-tip { position: absolute; z-index: 3; left: 50%; bottom: calc(5vh + 64px); transform: translateX(-50%);
+              margin: 0; font-size: 0.82rem; color: var(--ink-2); pointer-events: none; }
+@media (max-width: 959px) {        /* zoomed on a phone: exactly one screen tall */
+  .hero.zoomed { padding-bottom: 0; height: 100svh; }
+  .hero.zoomed .hero-copy { position: absolute; inset: 0 0 auto; }
+}
+#place-chips { display: contents; }
+@media (max-width: 700px) {
+  .places { border-radius: 18px; bottom: 2vh; left: 0.75rem; right: 0.75rem; max-width: none;
+            transform: none; --tx: 0; gap: 0.45rem; }
+  .places .btn, .chip { padding: 0.5rem 0.85rem; font-size: 0.85rem; }
+  .places-sep, .places-label { display: none; }
+  .hero .places-tip { display: none; }
+}
+.place-modal { top: calc(var(--nav-h) + 16px); bottom: 16px; right: max(16px, calc((100vw - var(--wide)) / 2)); }
+.has-banner .place-modal { top: calc(var(--nav-h) + 52px); }
+@media (min-width: 960px) {
+  .hero.modal-open .places, .hero.modal-open .places-tip { left: calc((100% - 480px) / 2); }
+}
+.mini-go { align-self: flex-start; padding: 0.6rem 1.1rem; font-size: 0.9rem; }
+@media (max-width: 700px) { .place-modal { top: calc(var(--nav-h) + 8px); left: 8px; right: 8px; bottom: 8px; } }
+
+/* motion: the headline rises in once; sections ease in as they are reached */
+@keyframes rise { from { opacity: 0; transform: translate(var(--tx, 0), 18px); } }
+.hero-copy h1 { animation: rise 1.1s cubic-bezier(.2,.7,.2,1) both .15s; }
+.hero-copy p { animation: rise 1.1s cubic-bezier(.2,.7,.2,1) both .35s; }
+.hero-copy .actions { animation: rise 1.1s cubic-bezier(.2,.7,.2,1) both .5s; }
+.places { --tx: -50%; }
+.js .reveal { opacity: 0; transform: translateY(34px);
+              transition: opacity 1s cubic-bezier(.2,.7,.2,1), transform 1.1s cubic-bezier(.2,.7,.2,1); }
+.js .reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy h1, .hero-copy p, .hero-copy .actions, .places, .pulse::after { animation: none; }
+  .js .reveal { opacity: 1; transform: none; transition: none; }
+  .hero-copy { transition: none; }
+}
 
 /* -------------------------------------------------------- buttons */
 .actions { display: flex; gap: 1.4rem; justify-content: center; align-items: center;

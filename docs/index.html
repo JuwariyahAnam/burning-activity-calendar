@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,6 +12,7 @@
 <!-- AI disclosure: this page was drafted with Claude (Anthropic) and reviewed by the team. -->
 </head>
 <body>
+<script>document.documentElement.classList.replace("no-js", "js")</script>
 <div class="loading" id="loading" role="status">Loading the fire record…</div>
 
 <nav class="nav" aria-label="Main">
@@ -37,30 +38,53 @@
 <main id="top">
   <!-- Hero: a year of real detections, replayed day by day -->
   <header class="hero" id="hero">
-    <canvas id="hero-canvas" aria-hidden="true"></canvas>
+    <canvas class="globe-gl" aria-hidden="true"></canvas>
+    <canvas class="globe-over" aria-hidden="true"></canvas>
     <div class="hero-copy">
       <h1>Every fire seen from orbit, on one calendar.</h1>
       <p id="hero-text">NASA satellites have logged burning here for over two decades, with
         two instruments that count differently. This calendar puts them on one scale, so you can
         see when burning happens and whether this season is unusual.</p>
       <div class="actions">
-        <a class="btn" href="#explore">Explore an area</a>
+        <button class="btn" id="globe-go" type="button">Fly to the study area</button>
         <a class="link" href="#record">See how the record was joined</a>
       </div>
     </div>
-    <div class="hero-clock" id="hero-clock" aria-hidden="true">
-      <div class="month" id="hero-month">October</div>
-      <div class="track" id="hero-track"></div>
-      <div class="note" id="hero-note">Fires on each date, all years. Brighter cells burned on that date in more years.</div>
+    <p class="globe-hint" id="globe-hint"><span class="pulse" aria-hidden="true"></span>Click the Earth to fly in</p>
+    <div class="places" id="places" hidden>
+      <button class="btn quiet" id="globe-back" type="button">Back to Earth</button>
+      <span class="places-sep" aria-hidden="true"></span>
+      <span class="places-label">Close-up of</span>
+      <span id="place-chips"></span>
+      <span class="places-sep" aria-hidden="true"></span>
+      <a class="btn" href="#explore">Explore the calendar</a>
     </div>
-    <p class="visually-hidden">Animation: Earth with the Terra, Aqua, Suomi NPP and NOAA-20
-      satellites on their orbits, and a close-up of the region replaying where fires were
-      detected through the year.</p>
+    <p class="places-tip" id="places-tip" hidden>Or click any district on the globe</p>
+    <section class="mini place-modal" id="place-modal" hidden role="dialog" aria-label="Close-up map of the place">
+      <div class="mini-head">
+        <div>
+          <h4 class="mini-title"></h4>
+          <p class="mini-sub"></p>
+        </div>
+        <button class="mini-close" type="button" aria-label="Close the close-up map">×</button>
+      </div>
+      <div class="seg mini-years" role="group" aria-label="Years shown">
+        <button type="button" data-v="latest" aria-pressed="true">This year</button>
+        <button type="button" data-v="span" aria-pressed="false">All years</button>
+      </div>
+      <div class="mini-map"><canvas aria-label="Fire spots in the place"></canvas></div>
+      <div class="mini-legend"></div>
+      <p class="mini-stats"></p>
+      <button class="btn mini-go" type="button">Show its burning calendar</button>
+    </section>
+    <p class="visually-hidden">A 3D Earth with the Terra, Aqua, Suomi NPP and NOAA-20 satellites on
+      their orbits. Choose "Fly to the study area" to zoom to Punjab and Haryana, where fires are
+      shown as red dots; then open a close-up of a state or district.</p>
   </header>
 
   <!-- Scroll story -->
   <section class="story" id="record" aria-labelledby="record-title">
-    <div class="wrap intro">
+    <div class="wrap intro reveal">
       <h2 id="record-title">Two satellites. Two different counts.</h2>
       <p class="lede">Fire-days per year in <span class="region-name">the region</span>: the
         number of 10 km grid cells with at least one detection, added up over every day.</p>
@@ -97,16 +121,14 @@
   <!-- Explorer -->
   <section class="explore" id="explore" aria-labelledby="explore-title">
     <div class="wrap">
-      <div class="intro">
+      <div class="intro reveal">
         <h2 id="explore-title">Choose an area. See its burning calendar.</h2>
         <p class="lede">Click a district on the map, or drag a rectangle. The figures, the
           calendar, this month's comparison and the downloads all update for that area.</p>
       </div>
 
       <div class="map" id="map" aria-label="Map of fire activity. Drag to choose an area, or type coordinates below.">
-        <div class="tiles" id="map-tiles"></div>
         <canvas id="map-canvas"></canvas>
-        <div class="labels" id="map-labels"></div>
         <button class="btn quiet reset" id="reset-area" type="button">Reset area</button>
         <div class="hint" id="map-hint">Click a district for a close-up, or drag to draw an area</div>
         <div class="map-legend" id="map-legend"></div>
@@ -123,15 +145,12 @@
             <button type="button" data-v="span" aria-pressed="false">All years</button>
           </div>
           <div class="mini-map">
-            <div class="tiles"></div>
             <canvas aria-label="Fire spots in the district"></canvas>
-            <div class="labels"></div>
           </div>
           <div class="mini-legend"></div>
           <p class="mini-stats"></p>
-          <p class="mini-credit">Fire data NASA FIRMS. Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a></p>
+          <p class="mini-credit">Fire data: NASA FIRMS. Boundaries: geoBoundaries, for reference only.</p>
         </section>
-        <div class="credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a></div>
       </div>
 
       <form class="controls" id="controls" onsubmit="return false">
@@ -165,7 +184,7 @@
       <p class="message" id="message" hidden></p>
 
       <p class="selection" id="selection-label" aria-live="polite"></p>
-      <div class="figures" id="figures" aria-live="polite"></div>
+      <div class="figures reveal" id="figures" aria-live="polite"></div>
 
       <div class="block" id="districts-block" hidden>
         <div class="block-head">
@@ -214,13 +233,13 @@
   <!-- Trust -->
   <section id="trust" aria-labelledby="trust-title">
     <div class="wrap">
-      <div class="intro">
+      <div class="intro reveal">
         <h2 id="trust-title">Can you trust the join?</h2>
         <p class="lede">We compare the three years after VIIRS began with the three years
           before. MODIS watched both periods with the same instrument, so its change is the real
           one. A good harmonization should match it.</p>
       </div>
-      <div class="verdict" id="verdict"></div>
+      <div class="verdict reveal" id="verdict"></div>
 
       <div class="two">
         <div class="glass panel">
@@ -239,7 +258,7 @@
 
       <div class="block">
         <h3>How the record is built</h3>
-        <ol class="steps">
+        <ol class="steps reveal">
           <li class="glass">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6h20l-8 9v7l-4 2v-9z" stroke-linejoin="round"/></svg>
             <p><strong>Clean</strong> MODIS confidence 30 or more, VIIRS nominal or high,
@@ -268,8 +287,8 @@
   <!-- Limits -->
   <section id="limits" aria-labelledby="limits-title">
     <div class="wrap">
-      <div class="intro"><h2 id="limits-title">What the record can't tell you</h2></div>
-      <div class="limits">
+      <div class="intro reveal"><h2 id="limits-title">What the record can't tell you</h2></div>
+      <div class="limits reveal">
         <div class="glass">
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="14" cy="14" r="10"/><path d="M14 8v6l4 3" stroke-linecap="round"/></svg>
           <h3>Fewer detections isn't less burning</h3>
@@ -311,7 +330,7 @@
     NOAA-20). We acknowledge the use of data and imagery from NASA's Fire Information for
     Resource Management System (FIRMS), part of NASA's Earth Science Data and Information System
     (ESDIS). Earth: NASA Blue Marble (public domain, via the three-globe package), colour-graded, with
-    generated clouds. Base map © OpenStreetMap contributors © CARTO. State and district boundaries:
+    generated clouds. State and district boundaries:
     geoBoundaries (Runfola et al. 2020, PLOS ONE), Open Database License; shown for reference
     only and not an authoritative depiction of any border.</p>
   <p>Built for the NASA Space Apps Challenge 2026, Harmonization of MODIS and VIIRS Hot Spots.

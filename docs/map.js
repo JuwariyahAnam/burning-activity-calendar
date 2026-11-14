@@ -1,7 +1,8 @@
-// Explorer map: Web Mercator, CARTO dark tiles, fire grid, state and district
-// boundaries with names. Click a district to select it, or drag a rectangle.
+// Explorer map: state and district shapes with names, and red dots where fires
+// were detected (redder = more intense). Click a district, or drag a rectangle.
 // AI disclosure: drafted with Claude (Anthropic); reviewed by the team.
-import { ember, fmt, showTip, hideTip } from "./viz.js";
+import { showTip, hideTip } from "./viz.js";
+import { drawDots } from "./hotspots.js";
 
 export const merc = (lat, lon) => {
   const s = Math.sin((lat * Math.PI) / 180);
@@ -52,15 +53,12 @@ export function ringsBox(rings) {
 
 export function createMap(root, meta, { onSelect, describe, districts }) {
   const canvas = root.querySelector("canvas");
-  const tiles = root.querySelector(".tiles"), labels = root.querySelector(".labels");
   const hint = root.querySelector(".hint");
-  const d = meta.cellDeg, half = d / 2;
-  const cellIndex = new Map(meta.cells.map(([la, lo], i) => [`${la.toFixed(2)},${lo.toFixed(2)}`, i]));
   const D = districts?.districts || [], S = districts?.states || [];
   const focus = new Set(districts?.focus || []);
-  D.forEach((x) => (x.box = ringsBox(x.rings)));
-  let heat = new Float32Array(meta.cells.length), max = 1, selection = null, hover = -1;
-  let drag = null, proj, ctx, W, H, paths = null, inset = 0;
+  D.forEach((x) => (x.box ||= ringsBox(x.rings)));
+  let dots = [], scaleT = () => 1, selection = null, hover = -1;
+  let drag = null, proj, ctx, W, H, paths = null, inset = 0, cache = null, dpr = 1;
 
   // the view: the focus states if known, else the data
   let ext;
@@ -69,38 +67,19 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     ext = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])),
            Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))];
   } else {
-    ext = [meta.extent[0] - half, meta.extent[1] - half, meta.extent[2] + half, meta.extent[3] + half];
+    const h = meta.cellDeg / 2;
+    ext = [meta.extent[0] - h, meta.extent[1] - h, meta.extent[2] + h, meta.extent[3] + h];
   }
   ext = [ext[0] - 0.12, ext[1] - 0.12, ext[2] + 0.12, ext[3] + 0.12];
 
   function layout() {
     ({ ctx, W, H } = setupCanvas(canvas));
+    dpr = Math.min(2, devicePixelRatio || 1);
     proj = fit(ext, W, H, W < 700 ? { l: 10, r: 10, t: 58, b: 112 }
       : inset ? { l: W - inset > 760 ? 230 : 20, r: inset + 24, t: 50, b: 16 } : { l: 230, r: 150, t: 16, b: 16 });
-    placeTiles(tiles, "dark_nolabels");
-    placeTiles(labels, "dark_only_labels");
     paths = buildPaths();
+    renderCache();
     draw();
-  }
-
-  function placeTiles(layer, style) {
-    layer.replaceChildren();
-    const z = Math.max(2, Math.min(12, Math.floor(Math.log2(proj.scale / 256))));
-    const n = 2 ** z, size = proj.scale / n;
-    const [lat0, lon0] = proj.ll(0, H), [lat1, lon1] = proj.ll(W, 0);
-    const [tx0, ty1] = merc(lat0, lon0).map((v) => Math.floor(v * n));
-    const [tx1, ty0] = merc(lat1, lon1).map((v) => Math.floor(v * n));
-    const retina = devicePixelRatio > 1 ? "@2x" : "";
-    for (let tx = tx0; tx <= tx1; tx++) for (let ty = ty0; ty <= ty1; ty++) {
-      const img = new Image();
-      img.alt = ""; img.decoding = "async"; img.loading = "lazy";
-      const [x, y] = proj.world(tx / n, ty / n);
-      Object.assign(img.style, { left: `${x}px`, top: `${y}px`, width: `${size + 0.5}px`,
-                                 height: `${size + 0.5}px` });
-      img.onerror = () => img.remove();
-      img.src = `https://${"abcd"[(tx + ty) % 4]}.basemaps.cartocdn.com/${style}/${z}/${tx}/${ty}${retina}.png`;
-      layer.appendChild(img);
-    }
   }
 
   function path(rings) {
@@ -112,56 +91,69 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     return p;
   }
   function buildPaths() {
-    return { states: S.map((s) => ({ name: s.name, p: path(s.rings), focus: focus.has(s.name),
-                                     box: ringsBox(s.rings) })),
+    return { states: S.map((s) => ({ name: s.name, p: path(s.rings), focus: focus.has(s.name) })),
              districts: D.map((x) => path(x.rings)) };
   }
 
-  const selectedCell = (i) => {
+  const inSelection = (d) => {
     if (!selection) return true;
-    if (selection.kind === "districts") return selection.ids.has(districts.cellDistrict[i]);
-    const [s, w, n, e] = selection.bbox, [la, lo] = meta.cells[i];
-    return la >= s && la <= n && lo >= w && lo <= e;
+    if (selection.kind === "districts") return selection.ids.has(d.district);
+    const [s, w, n, e] = selection.bbox;
+    return d.lat >= s && d.lat <= n && d.lon >= w && d.lon <= e;
   };
 
-  function draw() {
-    ctx.clearRect(0, 0, W, H);
-    // fire grid; cells outside the selection are dimmed
-    const lm = Math.log1p(max);
-    meta.cells.forEach(([la, lo], i) => {
-      const v = heat[i];
-      if (!(v > 0)) return;
-      const [x0, y0] = proj.px(la + half, lo - half);
-      const [x1, y1] = proj.px(la - half, lo + half);
-      ctx.globalAlpha = selectedCell(i) ? 1 : 0.22;
-      ctx.fillStyle = ember(0.18 + 0.82 * (Math.log1p(v) / lm));
-      ctx.fillRect(x0 + 0.4, y0 + 0.4, Math.max(1, x1 - x0 - 0.8), Math.max(1, y1 - y0 - 0.8));
-    });
-    ctx.globalAlpha = 1;
+  // land shapes and fire dots: redrawn only when data, selection or size change
+  function renderCache() {
+    if (!proj) return;
+    cache ||= document.createElement("canvas");
+    cache.width = Math.round(W * dpr); cache.height = Math.round(H * dpr);
+    const g = cache.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
     if (paths) {
-      // districts, then states on top
+      for (const s of paths.states) {            // neighbours faint, focus states solid
+        g.fillStyle = s.focus ? "#15294a" : "#0b1830";
+        g.fill(s.p, "evenodd");
+      }
+      if (selection?.kind === "districts" && selection.ids.size < 6) {
+        g.fillStyle = "#1d3963";
+        for (const i of selection.ids) g.fill(paths.districts[i], "evenodd");
+      }
+    }
+    const nMax = Math.max(1, ...dots.map((d) => d.n));
+    const [ax] = proj.px(0, 0), [bx] = proj.px(0, dots[0]?.size || meta.cellDeg);
+    const rMax = Math.max(1.6, Math.min(5, (bx - ax) * 0.75));
+    drawDots(g, dots.map((d) => {
+      const [x, y] = proj.px(d.lat, d.lon);
+      return { x, y, t: scaleT(d), r: Math.max(0.9, rMax * (0.4 + 0.6 * Math.sqrt(d.n / nMax))),
+               dim: inSelection(d) ? 1 : 0.22 };
+    }));
+  }
+
+  function draw() {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, W, H);
+    if (cache) ctx.drawImage(cache, 0, 0, W, H);
+    if (paths) {
       ctx.lineJoin = "round";
       paths.districts.forEach((p, i) => {
         const sel = selection?.kind === "districts" && selection.ids.has(i) && selection.ids.size < 6;
-        if (i === hover) { ctx.fillStyle = "rgba(92,200,242,0.12)"; ctx.fill(p, "evenodd"); }
-        ctx.strokeStyle = sel ? "#eef3fb" : i === hover ? "#5cc8f2" : "rgba(170,205,255,0.32)";
-        ctx.lineWidth = sel ? 2 : i === hover ? 1.6 : 0.7;
+        if (i === hover) { ctx.fillStyle = "rgba(92,200,242,0.10)"; ctx.fill(p, "evenodd"); }
+        ctx.strokeStyle = sel ? "#eef3fb" : i === hover ? "#5cc8f2" : "rgba(170,205,255,0.22)";
+        ctx.lineWidth = sel ? 2 : i === hover ? 1.6 : 0.6;
         ctx.stroke(p);
       });
       for (const s of paths.states) {
-        ctx.strokeStyle = s.focus ? "rgba(225,238,255,0.8)" : "rgba(200,220,255,0.4)";
-        ctx.lineWidth = s.focus ? 1.6 : 1.1;
+        ctx.strokeStyle = s.focus ? "rgba(200,222,255,0.75)" : "rgba(160,190,240,0.3)";
+        ctx.lineWidth = s.focus ? 1.5 : 0.9;
         ctx.stroke(s.p);
       }
       drawLabels();
     }
-    // a drawn rectangle: dim outside, outline inside
     const b = drag ? drag.bbox : selection?.kind === "bbox" ? selection.bbox : null;
     if (b) {
       const [x0, y0] = proj.px(b[2], b[1]), [x1, y1] = proj.px(b[0], b[3]);
       ctx.save();
-      ctx.fillStyle = "rgba(3,9,21,0.5)";
-      ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.rect(x0, y0, x1 - x0, y1 - y0); ctx.fill("evenodd");
       ctx.strokeStyle = "#eef3fb"; ctx.lineWidth = 1.5;
       if (drag) ctx.setLineDash([6, 5]);
       ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
@@ -193,10 +185,10 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     }
     const small = W < 600;
     [...D].sort((a, b) => b.cells - a.cells).forEach((x) => {
-      if (small && !(focus.has(x.state) && x.cells > 0)) return;
+      if (!focus.has(x.state) || (small && !(x.cells > 0))) return;
       const [px, py] = proj.px(x.label[0], x.label[1]);
       text(x.name, px, py, `500 ${small ? 10 : 11}px 'Instrument Sans', system-ui, sans-serif`,
-           focus.has(x.state) ? "rgba(210,226,248,0.92)" : "rgba(165,179,204,0.7)");
+           "rgba(210,226,248,0.9)");
     });
   }
 
@@ -224,14 +216,8 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     }
     const di = districtAt(lat, lon);
     if (di !== hover) { hover = di; draw(); }
-    const key = `${(Math.floor(lat / d) * d + half).toFixed(2)},${(Math.floor(lon / d) * d + half).toFixed(2)}`;
-    const ci = cellIndex.get(key);
-    const cellHtml = ci !== undefined && heat[ci] > 0
-      ? `<div class="r"><span>This 10 km cell</span><b>${fmt(heat[ci])} fire-days</b></div>` : "";
     if (di >= 0) {
-      showTip(e, `<div class="t">${D[di].name}${D[di].state ? `, ${D[di].state}` : ""}</div>${describe(di)}${cellHtml}<div class="r muted">Click to select this district</div>`);
-    } else if (cellHtml) {
-      showTip(e, `<div class="t">${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E</div>${cellHtml}`);
+      showTip(e, `<div class="t">${D[di].name}${D[di].state ? `, ${D[di].state}` : ""}</div>${describe(di)}<div class="r muted">Click for a close-up map</div>`);
     } else hideTip();
   });
   canvas.addEventListener("pointerleave", () => { hideTip(); if (hover !== -1) { hover = -1; draw(); } });
@@ -239,6 +225,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     if (!drag) return;
     const { moved, bbox: b } = drag;
     drag = null;
+    const d = meta.cellDeg;
     if (moved && b) {
       const snap = (v, f) => +(f(v / d) * d).toFixed(4);
       onSelect({ kind: "bbox", bbox: [snap(b[0], Math.floor), snap(b[1], Math.floor),
@@ -254,17 +241,12 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
 
   new ResizeObserver(() => layout()).observe(root);
   return {
-    setHeat(values) {
-      heat = values;
-      max = 1; for (const v of values) if (v > max) max = v;
-      if (ctx) draw();
-      return max;
-    },
+    setDots(list, scale) { dots = list; scaleT = scale; renderCache(); draw(); },
     // room on the right for the close-up panel (0 when it is closed)
     setInset(px) { if (px !== inset) { inset = px; if (ctx) layout(); } },
     setSelection(sel) {
       selection = sel.kind === "districts" ? { kind: "districts", ids: new Set(sel.ids) } : sel;
-      if (ctx) draw();
+      renderCache(); draw();
     },
   };
 }

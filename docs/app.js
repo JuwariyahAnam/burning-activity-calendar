@@ -2,15 +2,17 @@
 // AI disclosure: drafted with Claude (Anthropic); reviewed by the team.
 import * as E from "./engine.js";
 import { lineChart, renderCalendar, calendarTable, barChart, showTip, fmt, pct, median,
-         ember, COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
+         COLORS, MONTHS, MONTH_NAMES } from "./viz.js";
 import { createMap } from "./map.js";
-import { createGlobeHero } from "./globe.js";
+import { createGlobe } from "./globe3d.js";
 import { createMiniMap } from "./minimap.js";
+import { loadHotspots, aggregate, intensity, redGradient } from "./hotspots.js";
 
 const $ = (id) => document.getElementById(id);
 // selection: { kind: "bbox", bbox } or { kind: "districts", ids: [...] }
 const state = { sel: null, method: "monthly", aquaOnly: false, viirsAll: false,
                 yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false };
+let hot = null, dotsKey = "";
 let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
 
 async function load() {
@@ -21,6 +23,7 @@ async function load() {
     ]);
     meta = m; rows = E.decode(meta, b);
     districts = await fetch("data/districts.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    hot = await loadHotspots(meta);
   } catch (err) {
     $("loading").textContent = "No data yet. Run python build_site.py, then reload this page.";
     throw err;
@@ -30,13 +33,12 @@ async function load() {
                                : { kind: "bbox", bbox: [...meta.bbox] };
   state.sel = defaultSel;
   $("sample-banner").hidden = !meta.sample;
+  document.body.classList.toggle("has-banner", !!meta.sample);
   document.querySelectorAll(".region-name").forEach((n) => (n.textContent = meta.region));
   $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so you can see when burning happens and whether this season is unusual.`;
   $("data-note").textContent = `Data processed ${meta.generated}. Records from ${fmtDate(meta.coverage.MODIS[0])} to ${fmtDate(Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]))}.`;
 
-  createGlobeHero($("hero-canvas"), meta, rows,
-    { monthEl: $("hero-month"), trackEl: $("hero-track"), clockEl: $("hero-clock"), districts });
-  $("hero-note").textContent = `${meta.region}: fires on each date, all years. Brighter cells burned on that date in more years.`;
+  hero();
   story();
   map = createMap($("map"), meta, { districts, describe: describeDistrict, onSelect: (sel) => {
     state.sel = sel; update();
@@ -48,11 +50,71 @@ async function load() {
     { onToggle: (w) => map.setInset(innerWidth >= 700 ? w : 0) });
   wireControls();
   update();
+  reveals();
   $("loading").classList.add("done");
 }
 
 const fmtDate = (d) => E.dayToDate(meta, d).toLocaleDateString("en-GB",
   { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+// ---------------------------------------------------------- hero globe
+let globe, heroMini;
+function hero() {
+  const years = () => [state.yearFrom ?? firstYear(), state.yearTo ?? lastYear()];
+  // this year's fires in the study area, as red dots on the globe
+  const focusIds = defaultSel.kind === "districts" ? new Set(defaultSel.ids) : null;
+  const y = lastYear();
+  const fd = aggregate(meta, hot, rows, districts?.cellDistrict, { y0: y, y1: y, ids: focusIds });
+  globe = createGlobe($("hero"), {
+    meta, districts, describe: describeDistrict,
+    fireDots: { dots: fd.dots, t: intensity(fd.dots, fd.hasFrp), key: `${y}` },
+    onPlace: (p) => heroMini?.open(p.id, years()),
+    onMode: (m) => {
+      const zoomed = m === "area" || m === "flying-area";
+      $("hero").classList.toggle("zoomed", zoomed);
+      $("places").hidden = m !== "area";
+      $("places-tip").hidden = m !== "area" || !districts;
+      if (!zoomed) heroMini?.close();
+    },
+  });
+  $("globe-go").addEventListener("click", () => globe.flyToArea());
+  $("globe-back").addEventListener("click", () => globe.flyHome());
+  if (districts) {
+    heroMini = createMiniMap($("place-modal"), meta, districts, rows, {
+      onToggle: (w) => {
+        $("hero").classList.toggle("modal-open", w > 0);
+        globe.setInset(innerWidth >= 960 && w > 0 ? w + 32 : 0);
+      },
+      onShow: (place) => {
+        state.sel = { kind: "districts", ids: [...place.ids], label: place.ids.size > 1 ? place.title : undefined };
+        heroMini.close();
+        update();
+        $("explore").scrollIntoView({ behavior: reduced() ? "auto" : "smooth" });
+      },
+    });
+    $("place-chips").innerHTML = districts.focus.map((n) =>
+      `<button class="chip" type="button" data-state="${n}">${n}</button>`).join("");
+    $("place-chips").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-state]");
+      if (b) heroMini.openState(b.dataset.state, years());
+    });
+  } else {
+    $("place-chips").previousElementSibling.hidden = true;
+  }
+}
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const firstYear = () => E.dayToDate(meta, Math.min(meta.coverage.MODIS[0], meta.coverage.VIIRS[0])).getUTCFullYear();
+const lastYear = () => E.dayToDate(meta, Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1])).getUTCFullYear();
+
+// sections ease in as they scroll into view
+function reveals() {
+  const els = document.querySelectorAll(".reveal");
+  if (reduced() || !("IntersectionObserver" in window)) { els.forEach((e) => e.classList.add("in")); return; }
+  const io = new IntersectionObserver((entries) => entries.forEach((en) => {
+    if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+  }), { rootMargin: "0px 0px -8% 0px" });
+  els.forEach((e) => io.observe(e));
+}
 
 // ---------------------------------------------------------- scroll story
 function story() {
@@ -192,11 +254,7 @@ function update() {
 
 function renderAll() {
   if (!result) return;
-  const max = map.setHeat(heat());
-  $("map-legend").innerHTML = `Fire-days per 10 km cell, ${state.yearFrom}–${state.yearTo}
-    <div class="bar" style="background:linear-gradient(90deg,${[0.18, 0.4, 0.6, 0.8, 1].map(ember).join(",")})"></div>
-    <div class="ends"><span>1</span><span>${fmt(max)} (log scale)</span></div>
-    ${districts ? `<div class="lines"><span><i style="border-top:1.6px solid rgba(225,238,255,.8)"></i>State</span><span><i style="border-top:1px solid rgba(170,205,255,.5)"></i>District</span></div>` : ""}`;
+  renderMapDots();
   renderDistricts();
   renderFigures();
   renderCalendarBlock();
@@ -204,15 +262,21 @@ function renderAll() {
   renderTrust();
 }
 
-function heat() {
-  const v = new Float32Array(meta.cells.length);
-  const from = Date.UTC(state.yearFrom, 0, 1), to = Date.UTC(state.yearTo + 1, 0, 1);
-  const d0 = Math.round((from - Date.parse(`${meta.date0}T00:00:00Z`)) / 864e5);
-  const d1 = Math.round((to - Date.parse(`${meta.date0}T00:00:00Z`)) / 864e5);
-  for (let i = 0; i < rows.day.length; i++) {
-    if (rows.day[i] >= d0 && rows.day[i] < d1) v[rows.cell[i]]++;
-  }
-  return v;
+// red dots on the map for the years shown (recomputed only when the years change)
+function renderMapDots() {
+  const key = `${state.yearFrom}|${state.yearTo}`;
+  if (key === dotsKey) return;
+  dotsKey = key;
+  const { dots, hasFrp, unit } = aggregate(meta, hot, rows, districts?.cellDistrict,
+                                           { y0: state.yearFrom, y1: state.yearTo });
+  map.setDots(dots, intensity(dots, hasFrp));
+  const span = state.yearFrom === state.yearTo ? `${state.yearFrom}` : `${state.yearFrom}–${state.yearTo}`;
+  $("map-legend").innerHTML = `Fires detected, ${span}
+    <div class="bar" style="background:${redGradient}"></div>
+    <div class="ends"><span>${hasFrp ? "Lower" : "Fewer"}</span><span>${hasFrp ? "Higher fire intensity" : "More fire-days"}</span></div>
+    <div class="ends"><span>${hasFrp ? "Bigger dot: more detections" : "Dots are 10 km cells"}</span></div>
+    ${districts ? `<div class="lines"><span><i style="border-top:1.6px solid rgba(225,238,255,.8)"></i>State</span><span><i style="border-top:1px solid rgba(170,205,255,.5)"></i>District</span></div>` : ""}`;
+  void unit;
 }
 
 function mtdYears() {

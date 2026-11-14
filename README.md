@@ -29,8 +29,10 @@ streamlit run app.py
 
 ### Website (GitHub Pages)
 
-The `docs/` folder is a static site: an animated hero of a year of fire,
-a scroll story of the MODIS-to-VIIRS join, and an explorer where you drag
+The `docs/` folder is a static site: a WebGL Earth (NASA Blue Marble) with
+the four satellites in orbit; click it to fly to the study area, where states
+and districts are outlined and fires glow red, and click any place for a
+close-up map. Then a scroll story of the MODIS-to-VIIRS join, and an explorer where you drag
 an area on the map to get its burning calendar, this month against
 history, validation figures and CSV downloads. Clicking a district opens a
 close-up map with red dots where fires were detected, coloured by fire
@@ -78,7 +80,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 | `prepare.py` | Raw FIRMS CSVs to a compact cell-day file |
 | `build_site.py` | Exports data for the website to `docs/data/` |
 | `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
-| `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe.js` (hero globe) |
+| `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe3d.js` (WebGL hero globe), `minimap.js` (place close-ups), `hotspots.js` (fire dots) |
 | `app.py` | Streamlit app (alternative interface) |
 | `tests/make_synthetic.py` | Synthetic data for code testing only |
 
@@ -90,7 +92,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
   15(4): e0231866), India ADM1/ADM2 simplified, Open Database License. Downloaded by
   `build_site.py` (cached in `data/boundaries/`); shown for reference only.
 - Libraries: Streamlit, pandas, NumPy, Plotly, Folium, streamlit-folium.
-- Website: NASA Blue Marble Earth imagery (public domain, colour-graded, with generated clouds) via the three-globe package on jsDelivr; Natural Earth land outlines (public domain, fallback) via the world-atlas package; base map tiles © OpenStreetMap contributors © CARTO; Instrument Sans font (Google Fonts, SIL Open Font License).
+- Website: NASA Blue Marble Earth imagery (public domain, colour-graded, with generated clouds) via the three-globe package on jsDelivr; Natural Earth land outlines (public domain, fallback) via the world-atlas package; Instrument Sans font (Google Fonts, SIL Open Font License).
 - TODO: list every other dataset, library and reference you use.
 
 ## Use of AI
