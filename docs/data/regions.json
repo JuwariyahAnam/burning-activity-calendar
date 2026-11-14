@@ -33,6 +33,23 @@
    ],
    "from": 2008,
    "sample": false
+  },
+  {
+   "slug": "madhya-pradesh",
+   "name": "Madhya Pradesh",
+   "story": "Wheat residue burning that peaks from March to May, plus fires in its forests.",
+   "bbox": [
+    21.0,
+    74.0,
+    26.9,
+    82.9
+   ],
+   "center": [
+    23.95,
+    78.45
+   ],
+   "from": 2008,
+   "sample": false
   }
  ]
 }
