@@ -14,7 +14,7 @@ const $ = (id) => document.getElementById(id);
 const DEFAULT_METHOD = "monthly";            // the team's chosen calibration
 const state = { sel: null, method: DEFAULT_METHOD, aquaOnly: false, viirsAll: false,
                 yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false,
-                compareYear: null, timingIdx: 0 };
+                compareYear: null, timingIdx: null };
 let season = null;                           // typical year for the current selection
 let hot = null, dotsKey = "";
 let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
@@ -490,7 +490,10 @@ function renderTiming() {
   $("timing-block").hidden = !timing.length;
   if (!timing.length) return;
   timing.sort((a, b) => a.window.start - b.window.start);
-  state.timingIdx = Math.min(state.timingIdx, timing.length - 1);
+  if (state.timingIdx == null || state.timingIdx >= timing.length) {   // start with the main season
+    const main = timing.reduce((b, t, i) => (t.window.share > timing[b].window.share ? i : b), 0);
+    state.timingIdx = main;
+  }
   $("timing-season").hidden = timing.length < 2;
   $("timing-season").innerHTML = timing.map((t, i) =>
     `<button type="button" data-i="${i}" aria-pressed="${i === state.timingIdx}">${t.name}</button>`).join("");
