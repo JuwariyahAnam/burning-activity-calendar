@@ -251,11 +251,28 @@ def main():
     p.add_argument("--workers", type=int, default=6,
                    help="requests at the same time (default 6)")
     p.add_argument("--raw", default="raw")
+    p.add_argument("--region", help="a study area from regions.json (slug), or 'all'; "
+                                    "sets --bbox, --start and --raw for you")
     p.add_argument("--key", default=os.environ.get("FIRMS_MAP_KEY"))
     a = p.parse_args()
     if not a.key:
         sys.exit("Set FIRMS_MAP_KEY (see the top of this file).")
     a.key = a.key.strip()
+    if a.region:
+        import copy
+        import regions
+        for r in regions.pick(a.region):
+            print(f"===== {r['name']} =====")
+            b = copy.copy(a)
+            b.bbox, b.start, b.raw = r["bbox"], r["start"], regions.raw_dir(r)
+            download(b)
+        print("Done. Next: python prepare.py --region all")
+        return
+    download(a)
+    print('Done. Next: python prepare.py "raw/*.csv"')
+
+
+def download(a):
     w, s, e, n = (float(x) for x in a.bbox.split(","))
     if not (w < e and s < n):
         sys.exit("bbox must be west,south,east,north with west<east, south<north")
@@ -283,7 +300,6 @@ def main():
                      "Wait a minute, then run the same command again to continue.")
         rows = combine(job[1], cache, raw)
         print(f"  wrote {raw / f'FIRMS_{job[1]}.csv'} ({rows:,} detections)\n")
-    print('Done. Next: python prepare.py "raw/*.csv"')
 
 
 if __name__ == "__main__":

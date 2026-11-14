@@ -122,14 +122,19 @@ async function earthImage() {
 }
 
 // --------------------------------------------------------------- globe
-export function createGlobe(root, { meta, districts, fireDots, onPlace, describe, onMode }) {
+export function createGlobe(root, { meta, districts, fireDots, onPlace, describe, onMode,
+                                     regions = [], current = null, onRegion }) {
   const glCanvas = root.querySelector(".globe-gl"), over = root.querySelector(".globe-over");
   const D = districts?.districts || [], S = districts?.states || [];
-  const focusNames = districts?.focus || [];
-  const focusStates = S.filter((s) => focusNames.includes(s.name));
+  const focusIds = new Set(districts?.focusIds || []);
+  // shapes outlined in the study area: whole states, or the chosen districts
+  const byStates = (districts?.focusMode || "states") === "states";
+  const focusStates = byStates
+    ? S.filter((s) => (districts?.focus || []).includes(s.name))
+    : [{ name: meta.region, rings: D.filter((d) => focusIds.has(d.id)).flatMap((d) => d.rings), label: true }];
   D.forEach((x) => (x.box ||= ringsBox(x.rings)));
-  // the study area: focus states if known, else the data extent
-  let area = focusStates.length ? focusStates.map((s) => ringsBox(s.rings))
+  // the study area: focus shapes if known, else the data extent
+  let area = focusStates.length && focusStates[0].rings.length ? focusStates.map((s) => ringsBox(s.rings))
     .reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])])
     : meta.extent;
   const areaC = [(area[0] + area[2]) / 2, (area[1] + area[3]) / 2];
@@ -296,6 +301,50 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
     return x > r.left - h.left - 20 && x < r.right - h.left + 90 && y > r.top - h.top && y < r.bottom - h.top;
   };
 
+  // a pin for every study area; the current one is brighter
+  let pinHits = [];
+  function drawPins(time, alpha) {
+    pinHits = [];
+    if (alpha <= 0.01 || !regions.length) return;
+    const g = octx, labelBoxes = [];
+    g.globalAlpha = alpha;
+    // the current area first, so its label gets the best spot
+    for (const r of [...regions].sort((a, b) => (b.slug === current) - (a.slug === current))) {
+      const [x, y, z] = toScreen(r.center[0], r.center[1]);
+      if (z < 0.08) continue;
+      const on = r.slug === current, pulse = reduceMotion ? 0.5 : (Math.sin(time / 450 + r.center[1]) + 1) / 2;
+      const rad = (on ? 7 : 5) + pulse * 4;
+      const glow = g.createRadialGradient(x, y, 0, x, y, rad * 2.2);
+      glow.addColorStop(0, on ? "rgba(255,120,60,0.85)" : "rgba(255,150,90,0.55)");
+      glow.addColorStop(1, "rgba(255,120,60,0)");
+      g.fillStyle = glow; g.beginPath(); g.arc(x, y, rad * 2.2, 0, Math.PI * 2); g.fill();
+      g.fillStyle = on ? "#ffe2cf" : "#ffb38a";
+      g.beginPath(); g.arc(x, y, on ? 3.2 : 2.6, 0, Math.PI * 2); g.fill();
+      let lx = x + 10, ly = y, align = "left";
+      if (!overText(x, y) && z > 0.3) {
+        g.font = `${on ? 600 : 500} 12px 'Instrument Sans', system-ui, sans-serif`;
+        const w = g.measureText(r.name).width;
+        // first free spot: right, left, right above, right below, left above, left below
+        const spots = [[10, 0, "left"], [-10, 0, "right"], [10, -15, "left"], [10, 15, "left"],
+                       [-10, -15, "right"], [-10, 15, "right"]];
+        for (const [dx, dy, al] of spots) {
+          const x0 = al === "left" ? x + dx : x + dx - w, box = [x0 - 2, y + dy - 8, x0 + w + 2, y + dy + 8];
+          if (labelBoxes.every((q) => box[2] < q[0] || box[0] > q[2] || box[3] < q[1] || box[1] > q[3])) {
+            labelBoxes.push(box); lx = x + dx; ly = y + dy; align = al; break;
+          }
+        }
+        g.textAlign = align; g.textBaseline = "middle";
+        g.lineWidth = 3; g.strokeStyle = "rgba(3,9,21,0.75)"; g.strokeText(r.name, lx, ly);
+        g.fillStyle = on ? "#ffffff" : "rgba(235,241,250,0.85)"; g.fillText(r.name, lx, ly);
+      }
+      pinHits.push({ x, y, slug: r.slug, name: r.name, lx, ly, align });
+    }
+    g.globalAlpha = 1;
+  }
+  const pinAt = (x, y) => pinHits.find((p) => (p.x - x) ** 2 + (p.y - y) ** 2 < 14 ** 2 ||
+    (Math.abs(y - p.ly) < 9 && (p.align === "left" ? x > p.lx - 2 && x < p.lx + p.name.length * 6.5
+                                                     : x < p.lx + 2 && x > p.lx - p.name.length * 6.5)));
+
   // study area: shapes, district lines, fire dots (cached when the camera is still)
   function drawArea(alpha) {
     if (alpha <= 0.01 || !S.length) return;
@@ -334,7 +383,7 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
       g.drawImage(dotsCache, 0, 0, W, H);
     }
     D.forEach((d, i) => {
-      if (!focusNames.includes(d.state)) return;
+      if (!focusIds.has(i)) return;
       const p = ringPath(d.rings);
       if (i === hover) { g.fillStyle = "rgba(92,200,242,0.16)"; g.fill(p, "evenodd"); }
       g.strokeStyle = i === hover ? "#5cc8f2" : "rgba(190,215,255,0.35)";
@@ -346,8 +395,12 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
     // state names
     g.font = "600 16px 'Instrument Sans', system-ui, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
     for (const st of focusStates) {
-      const big = st.rings.reduce((a, r) => (r.length > a.length ? r : a), []);
-      const [lon, lat] = big.reduce((a, [x, y]) => [a[0] + x / big.length, a[1] + y / big.length], [0, 0]);
+      let lat, lon;
+      if (st.label) [lat, lon] = areaC;
+      else {
+        const big = st.rings.reduce((a, r) => (r.length > a.length ? r : a), []);
+        [lon, lat] = big.reduce((a, [x, y]) => [a[0] + x / big.length, a[1] + y / big.length], [0, 0]);
+      }
       const [x, y, z] = toScreen(lat, lon);
       if (z < 0) continue;
       g.lineWidth = 4; g.strokeStyle = "rgba(3,9,21,0.8)"; g.strokeText(st.name, x, y);
@@ -375,6 +428,7 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
     if (!prog) drawFallbackSphere();
     const areaVis = mode === "area" || flight?.keep ? 1 : flight ? (flight.to === "area" ? ease(Math.min(1, (time - flight.t0) / flight.ms)) : 1 - ease(Math.min(1, (time - flight.t0) / flight.ms))) : 0;
     drawOrbits(time, 1 - areaVis);
+    drawPins(time, 1 - areaVis);
     drawArea(areaVis);
   }
 
@@ -392,14 +446,21 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
     const ll = toLatLon(x, y);
     if (!ll) return -1;
     const [lat, lon] = ll;
-    return D.findIndex((d) => focusNames.includes(d.state) && lat >= d.box[0] && lat <= d.box[2] &&
+    return D.findIndex((d) => focusIds.has(d.id) && lat >= d.box[0] && lat <= d.box[2] &&
       lon >= d.box[1] && lon <= d.box[3] && inRings(d.rings, lon, lat));
   };
   const local = (e) => { const r = over.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
   over.addEventListener("pointermove", (e) => {
     const [x, y] = local(e);
     if (mode === "orbit") {
-      over.style.cursor = (x - cam.cx) ** 2 + (y - cam.cy) ** 2 < cam.R ** 2 ? "pointer" : "default";
+      const pin = pinAt(x, y);
+      over.style.cursor = pin || (x - cam.cx) ** 2 + (y - cam.cy) ** 2 < cam.R ** 2 ? "pointer" : "default";
+      const tip = document.getElementById("tooltip");
+      if (pin) {
+        tip.innerHTML = `<div class="t">${pin.name}</div><div class="r muted">${pin.slug === current ? "Click to fly in" : "Click to open this study area"}</div>`;
+        tip.classList.add("show");
+        tip.style.left = `${Math.min(e.clientX + 14, innerWidth - 220)}px`; tip.style.top = `${e.clientY + 14}px`;
+      } else tip.classList.remove("show");
       return;
     }
     if (mode !== "area") return;
@@ -418,7 +479,9 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
   over.addEventListener("pointerleave", () => { hover = -1; document.getElementById("tooltip").classList.remove("show"); });
   over.addEventListener("click", (e) => {
     const [x, y] = local(e);
-    if (mode === "orbit" && (x - cam.cx) ** 2 + (y - cam.cy) ** 2 < cam.R ** 2) fly("area");
+    const pin = mode === "orbit" ? pinAt(x, y) : null;
+    if (pin) { document.getElementById("tooltip").classList.remove("show"); onRegion ? onRegion(pin.slug) : fly("area"); }
+    else if (mode === "orbit" && (x - cam.cx) ** 2 + (y - cam.cy) ** 2 < cam.R ** 2) fly("area");
     else if (mode === "area") {
       const di = districtAt(x, y);
       if (di >= 0) { document.getElementById("tooltip").classList.remove("show"); onPlace?.({ kind: "district", id: di }); }

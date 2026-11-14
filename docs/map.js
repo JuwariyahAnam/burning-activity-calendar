@@ -56,14 +56,17 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
   const hint = root.querySelector(".hint");
   const D = districts?.districts || [], S = districts?.states || [];
   const focus = new Set(districts?.focus || []);
+  const focusIds = new Set(districts?.focusIds || []);
+  const byStates = (districts?.focusMode || "states") === "states";
   D.forEach((x) => (x.box ||= ringsBox(x.rings)));
   let dots = [], scaleT = () => 1, selection = null, hover = -1;
   let drag = null, proj, ctx, W, H, paths = null, inset = 0, cache = null, dpr = 1;
 
   // the view: the focus states if known, else the data
   let ext;
-  if (focus.size) {
-    const boxes = S.filter((s) => focus.has(s.name)).map((s) => ringsBox(s.rings));
+  if (focusIds.size) {
+    const boxes = byStates ? S.filter((s) => focus.has(s.name)).map((s) => ringsBox(s.rings))
+                           : D.filter((d) => focusIds.has(d.id)).map((d) => d.box);
     ext = [Math.min(...boxes.map((b) => b[0])), Math.min(...boxes.map((b) => b[1])),
            Math.max(...boxes.map((b) => b[2])), Math.max(...boxes.map((b) => b[3]))];
   } else {
@@ -91,7 +94,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     return p;
   }
   function buildPaths() {
-    return { states: S.map((s) => ({ name: s.name, p: path(s.rings), focus: focus.has(s.name) })),
+    return { states: S.map((s) => ({ name: s.name, p: path(s.rings), focus: byStates && focus.has(s.name) })),
              districts: D.map((x) => path(x.rings)) };
   }
 
@@ -114,6 +117,10 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
       for (const s of paths.states) {            // neighbours faint, focus states solid
         g.fillStyle = s.focus ? "#15294a" : "#0b1830";
         g.fill(s.p, "evenodd");
+      }
+      if (!byStates) {                            // part of a state: the chosen districts solid
+        g.fillStyle = "#15294a";
+        for (const i of focusIds) g.fill(paths.districts[i], "evenodd");
       }
       if (selection?.kind === "districts" && selection.ids.size < 6) {
         g.fillStyle = "#1d3963";
@@ -185,7 +192,7 @@ export function createMap(root, meta, { onSelect, describe, districts }) {
     }
     const small = W < 600;
     [...D].sort((a, b) => b.cells - a.cells).forEach((x) => {
-      if (!focus.has(x.state) || (small && !(x.cells > 0))) return;
+      if (!focusIds.has(x.id) || (small && !(x.cells > 0))) return;
       const [px, py] = proj.px(x.label[0], x.label[1]);
       text(x.name, px, py, `500 ${small ? 10 : 11}px 'Instrument Sans', system-ui, sans-serif`,
            "rgba(210,226,248,0.9)");

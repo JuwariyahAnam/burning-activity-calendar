@@ -119,6 +119,12 @@ export function createMiniMap(panel, meta, districts, rows, { onToggle, onShow }
       if (!st || !ids.size) return;
       return api.openPlace({ title: name, rings: st.rings, ids, districtId: null }, yearSpan);
     },
+    // a group of districts (part of a state), drawn as one area
+    openDistricts(title, ids, yearSpan) {
+      const set = new Set(ids);
+      return api.openPlace({ title, rings: D.filter((d) => set.has(d.id)).flatMap((d) => d.rings),
+                             ids: set, districtId: null }, yearSpan);
+    },
     async openPlace(p, yearSpan) {
       place = { ...p, box: ringsBox(p.rings) }; years = yearSpan;
       $(".mini-title").textContent = p.title;

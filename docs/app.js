@@ -15,22 +15,34 @@ const state = { sel: null, method: "monthly", aquaOnly: false, viirsAll: false,
 let hot = null, dotsKey = "";
 let meta, rows, result, map, mini = null, districts = null, defaultSel, dStats = null, regionK = null;
 
+// study areas: docs/data/regions.json lists them; ?region=<slug> picks one
+let regions = [], current = null;
 async function load() {
   try {
+    const idx = await fetch("data/regions.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    regions = idx?.regions || [];
+    const want = new URLSearchParams(location.search).get("region");
+    current = regions.find((r) => r.slug === want) || regions[0] || null;
+    const base = current ? `data/${current.slug}/` : "data/";
     const [m, b] = await Promise.all([
-      fetch("data/meta.json").then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-      fetch("data/cells.bin").then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }),
+      fetch(`${base}meta.json`).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+      fetch(`${base}cells.bin`).then((r) => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }),
     ]);
-    meta = m; rows = E.decode(meta, b);
-    districts = await fetch("data/districts.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    meta = m; meta.base = base; rows = E.decode(meta, b);
+    districts = await fetch(`${base}districts.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (districts) {        // older exports: focus by whole states
+      districts.focusIds ||= districts.districts.filter((d) => districts.focus.includes(d.state)).map((d) => d.id);
+      districts.focusMode ||= "states";
+    }
     hot = await loadHotspots(meta);
   } catch (err) {
     $("loading").textContent = "No data yet. Run python build_site.py, then reload this page.";
     throw err;
   }
-  const focusIds = districts ? districts.districts.filter((d) => districts.focus.includes(d.state)).map((d) => d.id) : [];
-  defaultSel = focusIds.length ? { kind: "districts", ids: focusIds, label: districts.focus.join(" and ") }
+  const focusIds = districts ? districts.focusIds : [];
+  defaultSel = focusIds.length ? { kind: "districts", ids: focusIds, label: meta.region }
                                : { kind: "bbox", bbox: [...meta.bbox] };
+  renderRegionPickers();
   state.sel = defaultSel;
   $("sample-banner").hidden = !meta.sample;
   document.body.classList.toggle("has-banner", !!meta.sample);
@@ -52,6 +64,10 @@ async function load() {
   update();
   reveals();
   $("loading").classList.add("done");
+  if (location.hash === "#fly") {               // arrived from another area's pin
+    history.replaceState(null, "", location.pathname + location.search);
+    setTimeout(() => globe.flyToArea(), reduced() ? 0 : 700);
+  }
 }
 
 const fmtDate = (d) => E.dayToDate(meta, d).toLocaleDateString("en-GB",
@@ -67,13 +83,14 @@ function hero() {
   const fd = aggregate(meta, hot, rows, districts?.cellDistrict, { y0: y, y1: y, ids: focusIds });
   globe = createGlobe($("hero"), {
     meta, districts, describe: describeDistrict,
+    regions, current: current?.slug, onRegion: goRegion,
     fireDots: { dots: fd.dots, t: intensity(fd.dots, fd.hasFrp), key: `${y}` },
     onPlace: (p) => heroMini?.open(p.id, years()),
     onMode: (m) => {
       const zoomed = m === "area" || m === "flying-area";
       $("hero").classList.toggle("zoomed", zoomed);
       $("places").hidden = m !== "area";
-      $("places-tip").hidden = m !== "area" || !districts;
+      $("places-tip").hidden = m !== "area";
       if (!zoomed) heroMini?.close();
     },
   });
@@ -92,16 +109,42 @@ function hero() {
         $("explore").scrollIntoView({ behavior: reduced() ? "auto" : "smooth" });
       },
     });
-    $("place-chips").innerHTML = districts.focus.map((n) =>
-      `<button class="chip" type="button" data-state="${n}">${n}</button>`).join("");
+    // whole states get a chip each; part of a state gets one chip for the area
+    const chips = districts.focusMode === "states"
+      ? districts.focus.map((n) => `<button class="chip" type="button" data-state="${n}">${n}</button>`)
+      : [`<button class="chip" type="button" data-area="1">${meta.region}</button>`];
+    $("place-chips").innerHTML = chips.join("");
     $("place-chips").addEventListener("click", (e) => {
-      const b = e.target.closest("button[data-state]");
-      if (b) heroMini.openState(b.dataset.state, years());
+      const b = e.target.closest("button");
+      if (b?.dataset.state) heroMini.openState(b.dataset.state, years());
+      else if (b?.dataset.area) heroMini.openDistricts(meta.region, districts.focusIds, years());
     });
   } else {
     $("place-chips").previousElementSibling.hidden = true;
   }
 }
+// ---------------------------------------------------------- study areas
+function goRegion(slug) {
+  if (!slug || slug === current?.slug) { globe.flyToArea(); return; }
+  location.href = `?region=${encodeURIComponent(slug)}#fly`;     // load that area, then fly in
+}
+function renderRegionPickers() {
+  const story = current?.story || "";
+  $("places-tip").textContent = `${story}${story ? " " : ""}${districts ? "Click any district for a close-up." : ""}`;
+  if (regions.length < 2) { $("regions").hidden = true; $("region-select").hidden = true; return; }
+  $("regions").innerHTML = `<span class="regions-label">Study areas</span>` + regions.map((r) =>
+    `<button type="button" class="region${r.slug === current.slug ? " on" : ""}" data-slug="${r.slug}"
+       aria-pressed="${r.slug === current.slug}">${r.name}</button>`).join("");
+  $("regions").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-slug]"); if (b) goRegion(b.dataset.slug);
+  });
+  $("region-select").innerHTML = regions.map((r) =>
+    `<option value="${r.slug}"${r.slug === current.slug ? " selected" : ""}>${r.name}</option>`).join("");
+  $("region-select").addEventListener("change", (e) => {
+    location.href = `?region=${encodeURIComponent(e.target.value)}${location.hash || ""}`;
+  });
+}
+
 const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const firstYear = () => E.dayToDate(meta, Math.min(meta.coverage.MODIS[0], meta.coverage.VIIRS[0])).getUTCFullYear();
 const lastYear = () => E.dayToDate(meta, Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1])).getUTCFullYear();
@@ -390,12 +433,12 @@ function renderDistricts() {
   dStats = computeDistrictStats();
   $("districts-block").hidden = !dStats;
   if (!dStats) return;
-  const focus = new Set(districts.focus);
+  const focus = new Set(districts.focusIds);
   const label = `${MONTH_NAMES[dStats.month - 1]} 1–${dStats.day}, ${dStats.year}`;
   $("districts-title").textContent = `Where it is burning: ${label}`;
   const list = dStats.districts
     .map((s) => ({ ...s, d: districts.districts[s.id] }))
-    .filter((s) => s.d.cells > 0 && (!focus.size || focus.has(s.d.state)))
+    .filter((s) => s.d.cells > 0 && (!focus.size || focus.has(s.id)))
     .sort((a, b) => (b.now || 0) - (a.now || 0));
   const shown = state.allDistricts ? list : list.slice(0, 10);
   $("districts-toggle").textContent = state.allDistricts ? "Show top 10" : `Show all ${list.length} districts`;

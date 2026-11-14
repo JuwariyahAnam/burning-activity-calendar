@@ -13,19 +13,27 @@ pip install -r requirements.txt
 # 1. get the data (free MAP_KEY: https://firms.modaps.eosdis.nasa.gov/api/map_key/)
 #    PowerShell:  $env:FIRMS_MAP_KEY = "your key"
 #    macOS/Linux: export FIRMS_MAP_KEY="your key"
-python fetch_firms.py                  # Punjab & Haryana, 2001 to today -> raw/
-#    (or put FIRMS Archive Download CSVs in raw/ instead)
+python fetch_firms.py --region all     # every study area in regions.json -> raw/...
+#    (or one: --region madhya-pradesh)
 
-# 2. compact the data for the app
-python prepare.py "raw/*.csv"          # writes data/cell_days.csv.gz
+# 2. compact the data
+python prepare.py --region all         # -> data/<area>/cell_days.csv.gz
 
 # 3. build the website data and preview it
-python build_site.py                   # writes docs/data/ (downloads district boundaries once)
+python build_site.py --region all      # -> docs/data/<area>/ and docs/data/regions.json
 cd docs && python -m http.server 8000  # open http://localhost:8000
 
 # (optional) the Streamlit version
 streamlit run app.py
 ```
+
+### Study areas
+
+`regions.json` lists them: Punjab & Haryana (2001 onward), western Uttar
+Pradesh, Madhya Pradesh, Mizoram & Manipur and Uttarakhand (2008 onward).
+Each has a bounding box, the states it covers and a one-line story. Add an
+area there and run the three commands with `--region <slug>`. The site shows
+a pin and a chip for every built area; `?region=<slug>` opens one directly.
 
 ### Website (GitHub Pages)
 
@@ -80,6 +88,7 @@ GitHub repository and point Streamlit Community Cloud at `app.py`.
 | `prepare.py` | Raw FIRMS CSVs to a compact cell-day file |
 | `build_site.py` | Exports data for the website to `docs/data/` |
 | `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
+| `regions.json`, `regions.py` | The study areas and a helper to read them |
 | `docs/` | Website: `index.html`, `app.js`, `engine.js` (harmonization), `viz.js` (charts), `map.js` (explorer map), `globe3d.js` (WebGL hero globe), `minimap.js` (place close-ups), `hotspots.js` (fire dots) |
 | `app.py` | Streamlit app (alternative interface) |
 | `tests/make_synthetic.py` | Synthetic data for code testing only |

@@ -135,11 +135,14 @@ def _area(r):
 
 
 # ------------------------------------------------------------ build
-def build(cells, extent, focus_states, adm1=None, adm2=None, tol=0.006):
+def build(cells, extent, focus_states, adm1=None, adm2=None, tol=0.006, clip=None):
     """Boundaries for the site.
 
     cells: list of [lat, lon] grid-cell centres (same order as meta.json)
     extent: [south, west, north, east] of the data
+    focus_states: list of alias lists, e.g. [["Uttarakhand", "Uttaranchal"]]
+    clip: [south, west, north, east] to keep only districts centred inside it
+          (for part of a state), or None for whole states
     Returns a dict for districts.json, or None if boundaries are unavailable.
     """
     print("District boundaries:")
@@ -188,16 +191,27 @@ def build(cells, extent, focus_states, adm1=None, adm2=None, tol=0.006):
             for i in np.flatnonzero(hit):
                 if not districts[i]["state"]:
                     districts[i]["state"] = st["name"]
-    focus = [st["name"] for st in states if st["name"].lower() in {x.lower() for x in focus_states}]
+    norm = lambda x: " ".join(x.lower().replace("&", "and").split())
+    wanted = [{norm(n) for n in group} for group in focus_states]
+    focus = [st["name"] for st in states if any(norm(st["name"]) in g for g in wanted)]
+    unmatched = [g for g in focus_states if not any(norm(st["name"]) in {norm(n) for n in g} for st in states)]
+    if unmatched:
+        print(f"  warning: no state named {unmatched} near this area; states found: "
+              f"{', '.join(st['name'] for st in states)}")
+    inside = lambda d: clip is None or (clip[0] <= d["label"][0] <= clip[2] and clip[1] <= d["label"][1] <= clip[3])
+    focus_ids = [d["id"] for d in districts if d["state"] in focus and inside(d)]
     out = {
         "source": "geoBoundaries (Runfola et al. 2020), India ADM1 and ADM2, simplified",
         "note": "Boundaries are for reference only.",
         "focus": focus,
+        "focusIds": focus_ids,
+        "focusMode": "districts" if clip else "states",
         "states": [{"name": st["name"], "rings": rings_out(st["polys"], tol)} for st in states],
         "districts": districts,
         "cellDistrict": cell_district.tolist(),
     }
     n_in = int((cell_district >= 0).sum())
     print(f"  {len(districts)} districts in {len(states)} states/territories; "
-          f"{n_in:,} of {len(cells):,} fire grid cells fall inside a district. Focus: {', '.join(focus) or 'none'}")
+          f"{n_in:,} of {len(cells):,} fire grid cells fall inside a district. "
+          f"Focus: {', '.join(focus) or 'none'} ({len(focus_ids)} districts{', clipped to the area' if clip else ''})")
     return out

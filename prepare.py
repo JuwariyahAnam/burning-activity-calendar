@@ -22,7 +22,9 @@ import harmonize as hz
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("files", nargs="+", help="FIRMS CSV files (globs allowed)")
+    p.add_argument("files", nargs="*", help="FIRMS CSV files (globs allowed)")
+    p.add_argument("--region", help="a study area from regions.json (slug), or 'all'; "
+                                    "reads its raw files and writes its cell-day file")
     p.add_argument("--out", default="data/cell_days.csv.gz")
     p.add_argument("--cell", type=float, default=0.1, help="grid size, degrees")
     p.add_argument("--tz", type=float, default=5.5, help="hours ahead of UTC")
@@ -30,10 +32,24 @@ def main():
     p.add_argument("--keep-low-viirs", action="store_true",
                    help="also keep VIIRS low-confidence detections")
     a = p.parse_args()
-
+    if a.region:
+        import regions
+        for r in regions.pick(a.region):
+            print(f"===== {r['name']} =====")
+            paths = sorted(glob.glob(r["raw"]))
+            if not paths:
+                print(f"  no raw files at {r['raw']}; skipped (download it with fetch_firms.py)")
+                continue
+            prepare(paths, r["data"], a)
+        print("Next: python build_site.py --region all")
+        return
     paths = sorted({f for pat in a.files for f in glob.glob(pat)})
     if not paths:
         raise SystemExit("No input files found.")
+    prepare(paths, a.out, a)
+
+
+def prepare(paths, out, a):
     keep = ("l", "n", "h") if a.keep_low_viirs else ("n", "h")
     parts = []
     for path in paths:
@@ -45,11 +61,11 @@ def main():
     keys = ["instrument", "satellite", "cell_lat", "cell_lon", "local_date"]
     cd = cd.groupby(keys, as_index=False).sum()
 
-    Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-    cd.to_csv(a.out, index=False)
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    cd.to_csv(out, index=False)
     for inst, (lo, hi) in hz.coverage(cd).items():
         print(f"{inst}: {lo.date()} to {hi.date()}")
-    print(f"Wrote {len(cd):,} cell-days to {a.out}")
+    print(f"Wrote {len(cd):,} cell-days to {out}")
 
 
 if __name__ == "__main__":

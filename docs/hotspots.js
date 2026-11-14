@@ -24,7 +24,7 @@ export const redGradient = `linear-gradient(90deg, ${RED.map(([, c]) => c).join(
 let cached = null;
 export function loadHotspots(meta) {
   if (!meta.hotspots) return Promise.resolve(null);
-  cached ||= fetch("data/hotspots.bin").then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => {
+  cached ||= fetch(`${meta.base || "data/"}hotspots.bin`).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => {
     if (!b) return null;
     const n = meta.hotspots.rows;
     return { cell: new Uint16Array(b, 0, n), n: new Uint16Array(b, 2 * n, n),
