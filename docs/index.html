@@ -163,9 +163,11 @@
       <div class="toolbar">
         <div class="finder" id="finder">
           <label class="visually-hidden" for="find">Find a district</label>
-          <input id="find" type="search" autocomplete="off" placeholder="Find a district, e.g. Moga"
+          <input id="find" type="search" autocomplete="off" placeholder="Choose or type a district"
                  role="combobox" aria-expanded="false" aria-controls="find-list" aria-autocomplete="list">
-          <ul class="find-list" id="find-list" role="listbox" hidden></ul>
+          <button class="find-toggle" id="find-toggle" type="button" tabindex="-1" aria-label="Show all districts"
+                  aria-controls="find-list" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5 10 12.5 15 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <ul class="find-list" id="find-list" role="listbox" aria-label="Districts" hidden></ul>
         </div>
         <div class="seg view-switch" role="group" aria-label="How much detail" id="view-switch">
           <button type="button" data-v="simple" aria-pressed="true">Simple</button>
@@ -180,8 +182,8 @@
           <button class="mini-close" type="button" id="guide-close" aria-label="Close the guide">×</button>
         </div>
         <ol class="guide-steps">
-          <li><b>Choose a place.</b> Pick a study area at the top of the page, type a district name in
-            the search box, or click a district on the map.</li>
+          <li><b>Choose a place.</b> Pick a study area at the top of the page, click the district box to
+            pick from the list (or type a name), or click a district on the map.</li>
           <li><b>Read the status.</b> The coloured card says in one line whether burning there is
             normal, above usual or far above usual right now.</li>
           <li><b>Check the calendar.</b> Each square is a month; brighter means more burning. Rows are
@@ -628,17 +630,17 @@
 <script type="importmap">
 {
  "imports": {
-  "./app.js": "./app.js?v=202611151213",
-  "./compare.js": "./compare.js?v=202611151213",
-  "./engine.js": "./engine.js?v=202611151213",
-  "./globe3d.js": "./globe3d.js?v=202611151213",
-  "./hotspots.js": "./hotspots.js?v=202611151213",
-  "./map.js": "./map.js?v=202611151213",
-  "./minimap.js": "./minimap.js?v=202611151213",
-  "./overview.js": "./overview.js?v=202611151213",
-  "./season.js": "./season.js?v=202611151213",
-  "./topo.js": "./topo.js?v=202611151213",
-  "./viz.js": "./viz.js?v=202611151213"
+  "./app.js": "./app.js?v=202611151238",
+  "./compare.js": "./compare.js?v=202611151238",
+  "./engine.js": "./engine.js?v=202611151238",
+  "./globe3d.js": "./globe3d.js?v=202611151238",
+  "./hotspots.js": "./hotspots.js?v=202611151238",
+  "./map.js": "./map.js?v=202611151238",
+  "./minimap.js": "./minimap.js?v=202611151238",
+  "./overview.js": "./overview.js?v=202611151238",
+  "./season.js": "./season.js?v=202611151238",
+  "./topo.js": "./topo.js?v=202611151238",
+  "./viz.js": "./viz.js?v=202611151238"
  }
 }
 </script>

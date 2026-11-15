@@ -1024,10 +1024,13 @@ function renderStatus() {
 }
 
 // ---------------------------------------------------- find a district
+// Clicking the box lists every district of this area, grouped by state;
+// typing narrows the list and also searches the other study areas.
 function wireFinder() {
-  const input = $("find"), list = $("find-list");
-  const plain = (t) => t.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  let index = [], others = null, active = -1, shown = [];
+  const input = $("find"), list = $("find-list"), toggle = $("find-toggle");
+  const plain = (t) => t.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  let index = [], others = null, active = -1, shown = [], browsing = false;
   const add = (slug, area, d) => {
     if (!d) return;
     const focus = new Set(d.focusIds || d.districts.filter((x) => d.focus.includes(x.state)).map((x) => x.id));
@@ -1036,26 +1039,56 @@ function wireFinder() {
     }
   };
   add(current?.slug, current?.name || meta.region, districts);
+  const here = index.slice().sort((p, q) => p.state.localeCompare(q.state) || p.name.localeCompare(q.name));
   const loadOthers = () => {
     others ||= Promise.all(regions.filter((r) => r.slug !== current?.slug).map((r) =>
       fetch(`data/${r.slug}/districts.json`).then((x) => (x.ok ? x.json() : null)).then((d) => add(r.slug, r.name, d)).catch(() => {})))
-      .then(() => show());
+      .then(() => { if (!list.hidden && !browsing) show(); });
     return others;
+  };
+  const open = (on) => {
+    list.hidden = !on; input.setAttribute("aria-expanded", String(on));
+    toggle?.setAttribute("aria-expanded", String(on));
+    if (!on) input.removeAttribute("aria-activedescendant");
+  };
+  const item = (e, i) => `<li role="option" id="find-${i}" aria-selected="${i === active}" data-i="${i}">${esc(e.name)}${
+    browsing ? "" : `, ${esc(e.state)}`}<small>${e.slug === current?.slug ? "" : esc(e.area)}</small></li>`;
+  const mark = () => {
+    list.querySelectorAll("li[data-i]").forEach((li) => li.setAttribute("aria-selected", String(+li.dataset.i === active)));
+    if (active >= 0) {
+      input.setAttribute("aria-activedescendant", `find-${active}`);
+      $(`find-${active}`)?.scrollIntoView({ block: "nearest" });
+    }
+  };
+  // every district of the current area, grouped by state
+  const showAll = () => {
+    browsing = true; shown = here; active = -1;
+    const states = [...new Set(here.map((e) => e.state))];
+    let html = `<li class="note" role="presentation">${here.length} districts in ${esc(current?.name || meta.region)}. Type to search all study areas.</li>`;
+    let i = 0;
+    for (const st of states) {
+      if (states.length > 1) html += `<li class="group" role="presentation">${esc(st)}</li>`;
+      for (const e of here) if (e.state === st) html += item(e, i++);
+    }
+    list.innerHTML = here.length ? html : `<li class="none">No districts in this area</li>`;
+    list.scrollTop = 0;
+    open(true);
   };
   const show = () => {
     const q = plain(input.value.trim());
-    if (q.length < 2) { list.hidden = true; input.setAttribute("aria-expanded", "false"); return; }
-    const starts = index.filter((e) => e.key.startsWith(q)), has = index.filter((e) => !e.key.startsWith(q) && e.key.includes(q));
-    shown = [...starts, ...has].slice(0, 8);
+    if (!q) { showAll(); return; }
+    browsing = false;
+    const starts = index.filter((e) => e.key.startsWith(q));
+    const has = q.length > 1 ? index.filter((e) => !e.key.startsWith(q) && e.key.includes(q)) : [];
+    shown = [...starts, ...has].slice(0, 40);
     active = shown.length ? 0 : -1;
     list.innerHTML = shown.length
-      ? shown.map((e, i) => `<li role="option" id="find-${i}" aria-selected="${i === active}" data-i="${i}">${e.name}, ${e.state}<small>${e.slug === current?.slug ? "" : e.area}</small></li>`).join("")
+      ? shown.map(item).join("")
       : `<li class="none">No district by that name in the study areas</li>`;
-    list.hidden = false; input.setAttribute("aria-expanded", "true");
-    input.setAttribute("aria-activedescendant", active >= 0 ? `find-${active}` : "");
+    open(true); mark();
   };
   const pick = (e) => {
-    list.hidden = true; input.value = `${e.name}, ${e.state}`; input.setAttribute("aria-expanded", "false");
+    open(false); input.value = `${e.name}, ${e.state}`;
     if (e.slug === current?.slug) {
       state.sel = { kind: "districts", ids: [e.id] };
       update();
@@ -1065,23 +1098,36 @@ function wireFinder() {
       location.href = `?region=${encodeURIComponent(e.slug)}&area=d:${e.id}#explore`;
     }
   };
-  input.addEventListener("focus", loadOthers);
+  // a click or focus opens the whole list; the chosen name is selected so typing replaces it
+  const browse = () => { loadOthers(); if (list.hidden) { showAll(); input.select(); } };
+  input.addEventListener("focus", browse);
+  input.addEventListener("click", browse);
   input.addEventListener("input", () => { show(); loadOthers(); });
+  toggle?.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    if (list.hidden) { input.focus(); showAll(); } else open(false);
+  });
+  toggle?.addEventListener("click", (e) => { if (e.detail === 0) { input.focus(); showAll(); } });
   input.addEventListener("keydown", (e) => {
-    if (list.hidden || !shown.length) { if (e.key === "Escape") list.hidden = true; return; }
+    if (list.hidden) {
+      if (e.key === "ArrowDown") { e.preventDefault(); showAll(); active = 0; mark(); }
+      return;
+    }
+    if (e.key === "Escape") { open(false); return; }
+    if (!shown.length) return;
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      active = (active + (e.key === "ArrowDown" ? 1 : -1) + shown.length) % shown.length;
-      list.querySelectorAll("li").forEach((li, i) => li.setAttribute("aria-selected", i === active));
-      input.setAttribute("aria-activedescendant", `find-${active}`);
+      active = active < 0 ? (e.key === "ArrowDown" ? 0 : shown.length - 1)
+        : (active + (e.key === "ArrowDown" ? 1 : -1) + shown.length) % shown.length;
+      mark();
     } else if (e.key === "Enter") { e.preventDefault(); if (active >= 0) pick(shown.at(active)); }
-    else if (e.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); }
   });
   list.addEventListener("mousedown", (e) => {
+    e.preventDefault();
     const li = e.target.closest("li[data-i]"); if (!li) return;
-    e.preventDefault(); pick(shown.at(+li.dataset.i));
+    pick(shown.at(+li.dataset.i));
   });
-  input.addEventListener("blur", () => setTimeout(() => { list.hidden = true; input.setAttribute("aria-expanded", "false"); }, 120));
+  input.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== input) open(false); }, 120));
 }
 
 
