@@ -27,6 +27,11 @@ What it offers, for any study area, district or drawn rectangle:
   (`docs/data/alerts.xml`), a JSON file per area and a link to NASA FIRMS email
   alerts for the same area.
 - **Compare two places**: any two areas or districts side by side, per 1,000 km².
+- **When India burns**: every study area's typical year on one calendar, ordered
+  by peak, with today marked, which areas are in season now and which start next.
+- **Ask the calendar**: plain questions (unusual now? main season? which
+  districts? rising or falling? which area is next?) answered from the same data
+  as the charts, including a district or another area by name. No AI is used.
 - **Validation**: held-out-year error and a jump test at the 2012 switch.
 - **Data out**: seven CSV downloads, a link that reopens the exact view, and a
   citation with the FIRMS product DOIs.
