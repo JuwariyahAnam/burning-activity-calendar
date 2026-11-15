@@ -43,6 +43,17 @@ export function districtMask(meta, cellDistrict, ids) {
   return mask;
 }
 
+// Weight of one VIIRS cell-day in the reference record. S-NPP counts 1. After
+// S-NPP ended, NOAA-20 takes over at meta.n20Scale: S-NPP fire-days divided by
+// NOAA-20 fire-days over the months both flew (NOAA-20 counts about 10% more),
+// so the record does not step up at the handover. "All VIIRS" counts plainly.
+export function viirsWeight(f, d, snppEnd, viirsAll, n20 = 1) {
+  if (viirsAll) return f & (FLAG.SNPP | FLAG.NOAA20) ? 1 : 0;
+  if (snppEnd == null) return f & FLAG.NOAA20 ? 1 : 0;
+  if (f & FLAG.SNPP) return 1;
+  return (f & FLAG.NOAA20) && d > snppEnd ? n20 : 0;
+}
+
 // Daily active-cell counts per instrument. NaN = instrument not observing.
 // The area is opts.mask (one byte per cell) when given, otherwise the bbox.
 export function dailyCounts(meta, rows, bbox, { aquaOnly = false, viirsAll = false, mask: given } = {}) {
@@ -54,15 +65,13 @@ export function dailyCounts(meta, rows, bbox, { aquaOnly = false, viirsAll = fal
   const mask = given || cellMask(meta, bbox);
   const mBits = aquaOnly ? FLAG.AQUA : FLAG.TERRA | FLAG.AQUA;
   const snppEnd = meta.snppEnd; // null when S-NPP is absent
+  const n20 = meta.n20Scale ?? 1;
   for (let i = 0; i < rows.day.length; i++) {
     if (!mask[rows.cell[i]]) continue;
     const d = rows.day[i], f = rows.flags[i], k = d - start;
     if (f & mBits) modis[k]++;
-    let v;
-    if (viirsAll) v = f & (FLAG.SNPP | FLAG.NOAA20);
-    else if (snppEnd == null) v = f & FLAG.NOAA20;
-    else v = (f & FLAG.SNPP) || ((f & FLAG.NOAA20) && d > snppEnd);
-    if (v) viirs[k]++;
+    const v = viirsWeight(f, d, snppEnd, viirsAll, n20);
+    if (v) viirs[k] += v;
   }
   for (const [arr, inst] of [[modis, "MODIS"], [viirs, "VIIRS"]]) {
     const [a, b] = meta.coverage[inst];
@@ -280,16 +289,14 @@ export function districtStats(meta, rows, cellDistrict, nDistricts, k, opts, yea
   const M = Array.from({ length: nDistricts }, () => new Float32Array(len));
   const V = Array.from({ length: nDistricts }, () => new Float32Array(len));
   const mBits = aquaOnly ? FLAG.AQUA : FLAG.TERRA | FLAG.AQUA, snppEnd = meta.snppEnd;
+  const n20 = meta.n20Scale ?? 1;
   for (let i = 0; i < rows.day.length; i++) {
     const dist = cellDistrict[rows.cell[i]];
     if (dist < 0) continue;
     const d = rows.day[i], f = rows.flags[i], j = d - start;
     if (f & mBits) M[dist][j]++;
-    let v;
-    if (viirsAll) v = f & (FLAG.SNPP | FLAG.NOAA20);
-    else if (snppEnd == null) v = f & FLAG.NOAA20;
-    else v = (f & FLAG.SNPP) || ((f & FLAG.NOAA20) && d > snppEnd);
-    if (v) V[dist][j]++;
+    const v = viirsWeight(f, d, snppEnd, viirsAll, n20);
+    if (v) V[dist][j] += v;
   }
   // calendar of each daily index, computed once
   const year = new Int16Array(len), month = new Int8Array(len), dom = new Int8Array(len);
@@ -366,16 +373,14 @@ export function districtRecent(meta, rows, cellDistrict, nDistricts, k, opts, da
   const M = Array.from({ length: nDistricts }, () => new Float32Array(len));
   const V = Array.from({ length: nDistricts }, () => new Float32Array(len));
   const mBits = aquaOnly ? FLAG.AQUA : FLAG.TERRA | FLAG.AQUA, snppEnd = meta.snppEnd;
+  const n20 = meta.n20Scale ?? 1;
   for (let i = 0; i < rows.day.length; i++) {
     const dist = cellDistrict[rows.cell[i]];
     if (dist < 0) continue;
     const d = rows.day[i], f = rows.flags[i], j = d - start;
     if (f & mBits) M[dist][j]++;
-    let v;
-    if (viirsAll) v = f & (FLAG.SNPP | FLAG.NOAA20);
-    else if (snppEnd == null) v = f & FLAG.NOAA20;
-    else v = (f & FLAG.SNPP) || ((f & FLAG.NOAA20) && d > snppEnd);
-    if (v) V[dist][j]++;
+    const v = viirsWeight(f, d, snppEnd, viirsAll, n20);
+    if (v) V[dist][j] += v;
   }
   const [vA, vB] = meta.coverage.VIIRS, [mA, mB] = meta.coverage.MODIS;
   const observed = (d) => (d >= vA && d <= vB) || (d >= mA && d <= mB);

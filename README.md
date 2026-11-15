@@ -132,7 +132,13 @@ Cloud from the same repository.
    least one detection. This removes duplicate detections and much of the
    pixel-size difference.
 3. **One VIIRS satellite at a time.** S-NPP while it exists, NOAA-20 after,
-   so adding satellites in 2018 and 2023 creates no jump.
+   so adding satellites in 2018 and 2023 creates no jump. S-NPP stopped on
+   2 November 2026. Over January to October 2026, when both flew, NOAA-20
+   counted 7-12% more fire-days than S-NPP in every study area (same-month
+   error 8-12%), so after the handover NOAA-20 fire-days are scaled by S-NPP /
+   NOAA-20 over that overlap (`n20Scale` in each area's `meta.json`: 0.90 to
+   0.94). Without it the record would step up by about 10% at the handover and
+   flag districts that are not unusual.
 4. **Calibrate on the overlap.** VIIRS ≈ k × MODIS, with either one k or one
    k per calendar month, fitted on months both instruments observed.
 5. **Convert the history.** MODIS-only years are scaled to VIIRS-equivalent.

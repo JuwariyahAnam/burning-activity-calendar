@@ -488,7 +488,8 @@ table.data th { color: var(--ink-2); font-weight: 500; }
 @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
 
 /* --------------------------------------------------------- limits */
-.limits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.limits { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+@media (max-width: 1180px) { .limits { grid-template-columns: repeat(2, 1fr); } }
 .limits > div { padding: 1.6rem 1.5rem; }
 .limits p { color: var(--ink-2); margin: 0; }
 @media (max-width: 860px) { .limits { grid-template-columns: 1fr; } }
@@ -665,3 +666,8 @@ button.info.term { display: inline; width: auto; height: auto; border: 0; border
                    color: var(--ink-2); text-decoration: underline dotted; text-underline-offset: 3px; vertical-align: baseline; }
 button.info.term:hover, button.info.term[aria-expanded="true"] { color: var(--accent); }
 .terms { margin-left: 0.4rem; white-space: nowrap; }
+
+.handover { max-width: 62rem; margin: 1.2rem 0 0; }
+.handover strong { color: var(--ink); }
+.add-area { margin: 1.4rem 0 0; color: var(--ink-2); max-width: 60rem; }
+.add-area code { font-size: 0.92em; }

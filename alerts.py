@@ -25,7 +25,28 @@ METHOD = "monthly"        # keep the same as DEFAULT_METHOD in docs/app.js
 TERRA, AQUA, SNPP, NOAA20 = 1, 2, 4, 8
 
 
-def compute(rows, cell_id, bnd, cov, snpp_end, days=7, method=METHOD):
+def noaa20_scale(rows, snpp_end, min_days=60, min_count=200):
+    """S-NPP fire-days / NOAA-20 fire-days over the days both flew, before S-NPP ended.
+
+    NOAA-20 counts about 10% more fire-days than S-NPP over the same cells, so
+    after the handover its days are scaled by this to stay on the S-NPP scale
+    the history is calibrated to. 1.0 when the overlap is too short to tell.
+    """
+    if snpp_end is None:
+        return 1.0
+    flag, date = rows["flag"].to_numpy(), rows["local_date"]
+    n20_days = date[(flag & NOAA20) > 0]
+    if n20_days.empty:
+        return 1.0
+    both = (date >= n20_days.min()) & (date <= snpp_end)
+    s = int(((flag & SNPP) > 0)[both.to_numpy()].sum())
+    n = int(((flag & NOAA20) > 0)[both.to_numpy()].sum())
+    if (snpp_end - n20_days.min()).days < min_days or min(s, n) < min_count:
+        return 1.0
+    return round(s / n, 3)
+
+
+def compute(rows, cell_id, bnd, cov, snpp_end, days=7, method=METHOD, n20_scale=1.0):
     """rows: local_date, cell_lat, cell_lon, flag (one row per cell and day)."""
     cell_district = np.asarray(bnd["cellDistrict"])
     cell = np.array([cell_id[(la, lo)] for la, lo in zip(rows["cell_lat"], rows["cell_lon"])])
@@ -35,7 +56,10 @@ def compute(rows, cell_id, bnd, cov, snpp_end, days=7, method=METHOD):
     df["modis"] = (df["flag"] & (TERRA | AQUA)) > 0
     snpp = (df["flag"] & SNPP) > 0
     n20 = (df["flag"] & NOAA20) > 0
-    df["viirs"] = (n20 if snpp_end is None else snpp | (n20 & (df["date"] > snpp_end)))
+    if snpp_end is None:
+        df["viirs"] = n20.astype(float)
+    else:   # S-NPP counts 1; NOAA-20 after the handover counts n20_scale (see noaa20_scale)
+        df["viirs"] = np.where(snpp, 1.0, np.where(n20 & (df["date"] > snpp_end), n20_scale, 0.0))
     per = df.groupby(["dist", "date"])[["modis", "viirs"]].sum()
 
     # scaling factors from the whole study area, as on the website

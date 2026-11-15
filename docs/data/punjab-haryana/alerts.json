@@ -11,9 +11,9 @@
    "id": 37,
    "district": "Faridabad",
    "state": "Haryana",
-   "now": 4.0,
+   "now": 3.6,
    "usual": 1.0,
-   "ratio": 4.0,
+   "ratio": 3.6,
    "flagged": false,
    "record": false,
    "rank": "more than 20 of 25 years"
@@ -22,9 +22,9 @@
    "id": 32,
    "district": "Kurukshetra",
    "state": "Haryana",
-   "now": 12.0,
+   "now": 10.8,
    "usual": 4.0,
-   "ratio": 3.0,
+   "ratio": 2.7,
    "flagged": false,
    "record": false,
    "rank": "more than 21 of 25 years"
@@ -33,20 +33,20 @@
    "id": 56,
    "district": "Amritsar",
    "state": "Punjab",
-   "now": 23.0,
+   "now": 20.7,
    "usual": 12.4,
-   "ratio": 1.85,
+   "ratio": 1.67,
    "flagged": false,
    "record": false,
-   "rank": "more than 17 of 25 years"
+   "rank": "more than 14 of 25 years"
   },
   {
    "id": 68,
    "district": "Sahibzada Ajit Singh Nagar",
    "state": "Punjab",
-   "now": 5.0,
+   "now": 4.5,
    "usual": 3.0,
-   "ratio": 1.67,
+   "ratio": 1.5,
    "flagged": false,
    "record": false,
    "rank": "more than 18 of 25 years"
@@ -55,12 +55,12 @@
    "id": 49,
    "district": "Gurdaspur",
    "state": "Punjab",
-   "now": 16.0,
+   "now": 14.4,
    "usual": 10.4,
-   "ratio": 1.55,
+   "ratio": 1.39,
    "flagged": false,
    "record": false,
-   "rank": "more than 17 of 25 years"
+   "rank": "more than 15 of 25 years"
   }
  ]
 }

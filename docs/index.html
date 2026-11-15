@@ -431,6 +431,7 @@
           one. A good harmonization should match it.</p>
       </div>
       <div class="verdict reveal" id="verdict"></div>
+      <p class="handover muted small" id="handover" hidden></p>
 
       <div class="two">
         <div class="glass panel">
@@ -460,8 +461,8 @@
             detection falls in it, removing duplicates and much of the pixel-size gap.</p></li>
           <li class="glass">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="11" y="11" width="6" height="6" rx="1"/><path d="M3 9l6 6M25 19l-6-6M5 11l4-4M23 17l-4 4"/><path d="M8 22a9 9 0 0 1-4-6" stroke-linecap="round"/></svg>
-            <p><strong>One VIIRS satellite at a time</strong> Suomi NPP while it flew, NOAA-20
-            after, so new satellites in 2018 and 2023 add no false jumps.</p></li>
+            <p><strong>One VIIRS satellite at a time</strong> Suomi NPP while it flew, then
+            NOAA-20 scaled to match it, so new satellites in 2018 and 2023 add no false jumps.</p></li>
           <li class="glass">
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 4v20M6 24h16M5 9h18M5 9l-3 7h6zM23 9l-3 7h6z" stroke-linejoin="round"/></svg>
             <p><strong>Calibrate</strong> Learn VIIRS ≈ k × MODIS from the overlap years,
@@ -496,6 +497,12 @@
           <h3>An activity index, not burned area</h3>
           <p>Fire-days count grid cells with at least one detection per day. They track how
             much and how often an area burns, not how many fires there were or how large.</p></div>
+        <div class="glass">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 4l11 19H3z" stroke-linejoin="round"/><path d="M14 11v6" stroke-linecap="round"/><circle cx="14" cy="20" r="1" fill="currentColor" stroke="none"/></svg>
+          <h3>A flag is a prompt, not a warning</h3>
+          <p>A district is flagged by a simple rule against its own past: above the 90th
+            percentile and 1.5 times the median for those dates. Check FIRMS and local reports
+            before acting on it.</p></div>
       </div>
     </div>
   </section>
@@ -515,6 +522,9 @@
         <button class="btn quiet" type="button" id="dl-timing">Download season timing (CSV)</button>
         <button class="btn quiet" type="button" id="dl-districts">Download district table (CSV)</button>
       </div>
+      <p class="add-area small"><strong>Need another area?</strong> Any place NASA FIRMS covers
+        can be added: one entry in <code>regions.json</code>, then the download, prepare and build
+        scripts. The same method and tests run on it. <a class="link" href="https://github.com/JuwariyahAnam/burning-activity-calendar#running-it-for-real">How to add an area</a></p>
       <div class="cite">
         <h3>How to cite</h3>
         <p class="muted small">For this view (the link opens the same area, years and settings):</p>
@@ -570,16 +580,16 @@
 <script type="importmap">
 {
  "imports": {
-  "./app.js": "./app.js?v=202611150706",
-  "./compare.js": "./compare.js?v=202611150706",
-  "./engine.js": "./engine.js?v=202611150706",
-  "./globe3d.js": "./globe3d.js?v=202611150706",
-  "./hotspots.js": "./hotspots.js?v=202611150706",
-  "./map.js": "./map.js?v=202611150706",
-  "./minimap.js": "./minimap.js?v=202611150706",
-  "./season.js": "./season.js?v=202611150706",
-  "./topo.js": "./topo.js?v=202611150706",
-  "./viz.js": "./viz.js?v=202611150706"
+  "./app.js": "./app.js?v=202611150748",
+  "./compare.js": "./compare.js?v=202611150748",
+  "./engine.js": "./engine.js?v=202611150748",
+  "./globe3d.js": "./globe3d.js?v=202611150748",
+  "./hotspots.js": "./hotspots.js?v=202611150748",
+  "./map.js": "./map.js?v=202611150748",
+  "./minimap.js": "./minimap.js?v=202611150748",
+  "./season.js": "./season.js?v=202611150748",
+  "./topo.js": "./topo.js?v=202611150748",
+  "./viz.js": "./viz.js?v=202611150748"
  }
 }
 </script>

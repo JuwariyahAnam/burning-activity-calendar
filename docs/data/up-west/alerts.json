@@ -10,31 +10,20 @@
    "id": 69,
    "district": "Kanpur Nagar",
    "state": "Uttar Pradesh",
-   "now": 18.0,
+   "now": 16.3,
    "usual": 1.5,
-   "ratio": 12.0,
+   "ratio": 10.85,
    "flagged": true,
-   "record": true,
-   "rank": "highest in 18 years"
+   "record": false,
+   "rank": "more than 17 of 18 years"
   },
   {
    "id": 71,
    "district": "Jalaun",
    "state": "Uttar Pradesh",
-   "now": 49.0,
+   "now": 44.3,
    "usual": 8.5,
-   "ratio": 5.76,
-   "flagged": true,
-   "record": false,
-   "rank": "more than 16 of 18 years"
-  },
-  {
-   "id": 70,
-   "district": "Auraiya",
-   "state": "Uttar Pradesh",
-   "now": 26.0,
-   "usual": 7.0,
-   "ratio": 3.71,
+   "ratio": 5.21,
    "flagged": true,
    "record": false,
    "rank": "more than 16 of 18 years"
@@ -42,12 +31,23 @@
  ],
  "closest": [
   {
+   "id": 70,
+   "district": "Auraiya",
+   "state": "Uttar Pradesh",
+   "now": 23.5,
+   "usual": 7.0,
+   "ratio": 3.36,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  },
+  {
    "id": 73,
    "district": "Kanpur Dehat",
    "state": "Uttar Pradesh",
-   "now": 25.0,
+   "now": 22.6,
    "usual": 10.0,
-   "ratio": 2.5,
+   "ratio": 2.26,
    "flagged": false,
    "record": false,
    "rank": "more than 15 of 18 years"
@@ -56,9 +56,9 @@
    "id": 46,
    "district": "Hapur",
    "state": "Uttar Pradesh",
-   "now": 3.0,
+   "now": 2.7,
    "usual": 1.5,
-   "ratio": 2.0,
+   "ratio": 1.81,
    "flagged": false,
    "record": false,
    "rank": "more than 11 of 18 years"
@@ -67,9 +67,9 @@
    "id": 62,
    "district": "Farrukhabad",
    "state": "Uttar Pradesh",
-   "now": 2.0,
+   "now": 1.8,
    "usual": 1.0,
-   "ratio": 2.0,
+   "ratio": 1.81,
    "flagged": false,
    "record": false,
    "rank": "more than 13 of 18 years"
@@ -78,23 +78,12 @@
    "id": 51,
    "district": "Bulandshahr",
    "state": "Uttar Pradesh",
-   "now": 6.0,
+   "now": 5.4,
    "usual": 3.5,
-   "ratio": 1.71,
+   "ratio": 1.55,
    "flagged": false,
    "record": false,
    "rank": "more than 10 of 18 years"
-  },
-  {
-   "id": 77,
-   "district": "Ghaziabad",
-   "state": "Uttar Pradesh",
-   "now": 5.0,
-   "usual": 3.0,
-   "ratio": 1.67,
-   "flagged": false,
-   "record": false,
-   "rank": "more than 12 of 18 years"
   }
  ]
 }

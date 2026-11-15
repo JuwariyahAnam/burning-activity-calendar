@@ -61,7 +61,7 @@ async function load() {
   $("sample-banner").hidden = !meta.sample;
   document.body.classList.toggle("has-banner", !!meta.sample);
   document.querySelectorAll(".region-name").forEach((n) => (n.textContent = meta.region));
-  $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so you can see when burning happens and whether this season is unusual.`;
+  $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so fire managers, scientists and land managers can see when burning happens and whether this season is unusual.`;
   $("data-note").textContent = `Data processed ${meta.generated}. Records from ${fmtDate(meta.coverage.MODIS[0])} to ${fmtDate(Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]))}.`;
 
   hero();
@@ -722,6 +722,12 @@ function renderTrust() {
   $("validation").innerHTML = `<table class="data"><thead><tr><th>Calibration</th><th>Monthly error</th><th>Annual bias</th><th>Years tested</th></tr></thead><tbody>${
     Object.entries(sum).map(([k, v]) => `<tr><td>${name[k]}${k === state.method ? " <span class='muted'>(in use)</span>" : ""}</td><td>${fmt(v.wape, 1)}%</td><td>${pct(v.bias)}</td><td>${v.years}</td></tr>`).join("")
   }</tbody></table><p class="muted small">Monthly error is the total absolute monthly error divided by the total observed. Lower is better.</p>`;
+  const n20 = meta.n20Scale;
+  $("handover").innerHTML = meta.snppEnd != null && n20 && n20 !== 1
+    ? `<strong>The 2026 satellite handover.</strong> Suomi NPP's record here ends on ${fmtDate(meta.snppEnd)}, and NOAA-20 takes over. ` +
+      `Over the months both flew, NOAA-20 counted ${fmt((1 / n20 - 1) * 100, 0)}% more fire-days here, so its days after the handover are scaled by ×${fmt(n20, 2)} to stay on the same scale.`
+    : "";
+  $("handover").hidden = !$("handover").innerHTML;
   barChart($("k-svg"), {
     items: MONTHS.map((mo, i) => ({ key: i, label: mo, value: result.k[i + 1], digits: 2 })),
     unit: "VIIRS per MODIS fire-day", height: 220, color: "#3c4a6b", labelEvery: 1,

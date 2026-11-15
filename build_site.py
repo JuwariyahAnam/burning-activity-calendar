@@ -142,6 +142,8 @@ def build(a):
     day, cell = day[order].astype(np.uint16), cell[order]
     flags = rows["flag"].to_numpy(np.uint8)[order]
 
+    n20_scale = alerts.noaa20_scale(rows, None if snpp.empty else snpp.max())
+    print(f"NOAA-20 to S-NPP scale after the handover: {n20_scale}")
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     old = None
@@ -163,6 +165,7 @@ def build(a):
         "coverage": {k: [int((v[0] - DATE0).days), int((v[1] - DATE0).days)]
                      for k, v in cov.items()},
         "snppEnd": None if snpp.empty else int((snpp.max() - DATE0).days),
+        "n20Scale": n20_scale,
         "rows": int(len(day)),
         "cells": [[round(float(la), 4), round(float(lo), 4)]
                   for la, lo in cells.itertuples(index=False)],
@@ -181,7 +184,8 @@ def build(a):
         dist_file.unlink()
     if bnd:                                  # districts burning far more than usual
         try:
-            al = alerts.compute(rows, cell_id, bnd, cov, None if snpp.empty else snpp.max())
+            al = alerts.compute(rows, cell_id, bnd, cov, None if snpp.empty else snpp.max(),
+                                n20_scale=n20_scale)
             alerts.save(out / "alerts.json", a.name, al)
             print(f"  alerts: {len(al['flagged'])} district(s) far above usual, {al['from']} to {al['to']}")
         except Exception as err:             # never block the build
