@@ -191,5 +191,6 @@ detections. The synthetic generator in `tests/` exists only to test the code.
 
 ## Licence
 
-TODO: choose an open-source licence (Space Apps applies Apache 2.0 if you
-choose none).
+The code is released under the MIT License (see `LICENSE`). The data keeps
+its own terms: NASA FIRMS data under NASA's open data policy, and the
+geoBoundaries outlines under the Open Database License.
