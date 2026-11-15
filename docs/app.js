@@ -435,6 +435,7 @@ function renderAll() {
   renderMtd();
   renderTrust();
   compare?.render();
+  renderAskChips();
   writeUrl();
   updateTabs();
 }
@@ -949,6 +950,7 @@ function wireEase() {
   document.querySelectorAll("button.info").forEach((b) => b.setAttribute("aria-expanded", "false"));
 
   wireFinder();
+  wireAsk();
 
   // section tabs: mark the part on screen
   const tabs = [...$("section-tabs").querySelectorAll("a")];
@@ -1078,4 +1080,160 @@ function wireFinder() {
     e.preventDefault(); pick(shown.at(+li.dataset.i));
   });
   input.addEventListener("blur", () => setTimeout(() => { list.hidden = true; input.setAttribute("aria-expanded", "false"); }, 120));
+}
+
+
+// ---------------------------------------------------- ask the calendar
+// Plain questions answered from the same numbers the page shows. No AI: each
+// question is matched to one of a few answers computed from the data.
+const ASK = [
+  { id: "now", q: "Is burning unusual right now?", words: /unusual|right now|this week|today|normal|usual|now\b|current/ },
+  { id: "season", q: "When is the main burning season?", words: /season|when|peak|month|critical|busiest/ },
+  { id: "districts", q: "Which districts are far above usual?", words: /district|which places|hotspot|where (is|are)/ },
+  { id: "trend", q: "Is burning rising or falling over the years?", words: /rising|falling|trend|increas|decreas|more or less|over the years|long.term/ },
+  { id: "timing", q: "Is the season starting earlier or later?", words: /earlier|later|shift|timing|moving/ },
+  { id: "next", q: "What happens in the next two weeks?", words: /next|coming|two weeks|forecast|outlook|expect|soon/ },
+  { id: "india", q: "Which area starts burning next across India?", words: /india|other areas?|across|elsewhere|nation|which area/ },
+  { id: "trust", q: "How reliable is this record?", words: /reliab|trust|accura|error|valid|harmoni|how good|sure/ },
+];
+let overviewData = null;
+const askPlain = (t) => t.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function renderAskChips() {
+  const box = $("ask-chips");
+  if (!box || box.childElementCount) return;
+  for (const a of ASK) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "ask-chip"; b.textContent = a.q;
+    b.addEventListener("click", () => { $("ask-input").value = a.q; answerAsk(a.q, a.id); });
+    box.appendChild(b);
+  }
+}
+
+function wireAsk() {
+  const form = $("ask-form");
+  if (!form) return;
+  renderAskChips();
+  form.addEventListener("submit", (e) => { e.preventDefault(); answerAsk($("ask-input").value); });
+}
+
+function askDistrict(text) {
+  if (!districts) return null;
+  const t = askPlain(text);
+  let best = null;
+  for (const d of districts.districts) {
+    if (!d.cells) continue;
+    const n = askPlain(d.name).replace(/\s*\(.*\)$/, "");
+    if (n.length >= 3 && t.includes(n) && (!best || n.length > best.n.length)) best = { d, n };
+  }
+  return best && best.d;
+}
+
+async function askOtherArea(text) {
+  const t = askPlain(text);
+  const r = regions.find((x) => x.slug !== current?.slug &&
+    askPlain(x.name).split(/\s*&\s*|\s+and\s+/).some((w) => w.length >= 4 && t.includes(w.replace(/ neighbours$/, ""))));
+  return r || null;
+}
+
+async function loadOverview() {
+  if (!overviewData) overviewData = await fetch("data/overview.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  return overviewData;
+}
+
+const ASK_ORDER = ["districts", "india", "trust", "trend", "timing", "next", "season", "now"];
+async function answerAsk(text, forced) {
+  const out = $("ask-answer");
+  if (!out || !result) return;
+  const q = askPlain(text || "");
+  const name = selName(state.sel).replace(/\s*\(\d+ districts?\)$/, "");
+  let html = "";
+  const district = forced ? null : askDistrict(text || "");
+  const other = forced || district ? null : await askOtherArea(text || "");
+  if (district) {
+    computeRecent();
+    const r = recentOf(district.id);
+    const st = (dStats || computeDistrictStats())?.districts?.[district.id];
+    const tr = st ? trendOf(st) : null;
+    html = `<b>${district.name}, ${district.state}.</b> `;
+    if (r && Number.isFinite(r.now)) {
+      html += `In the last ${recent.days} days: ${fmt(r.now)} fire-days, against a usual ${fmt(r.median)} for these dates` +
+        (r.flagged ? ` &mdash; <b>far above usual</b> (${rankText(r)}).` : `, ${rankText(r)}.`);
+    }
+    if (st && Number.isFinite(st.perYear)) html += ` In a usual year it has about ${fmt(st.perYear)} fire-days.`;
+    if (tr && Number.isFinite(tr.pct)) html += ` Long-term trend: ${tr.pct > 0 ? "+" : ""}${fmt(tr.pct, 1)}% a year (${tr.p < 0.05 ? "a clear trend" : "not a clear trend"}, p = ${fmt(tr.p, 3)}).`;
+    html += ` <a class="link" href="#" data-district="${district.id}">Show it on the map</a>`;
+  } else if (other) {
+    const ov = await loadOverview();
+    const r = ov?.regions.find((x) => x.slug === other.slug);
+    html = `<b>${other.name}</b> is another study area.`;
+    if (r) html += ` Its burning usually peaks around ${S.doyLabel(r.peakDoy)}, with about ${fmt(r.perYear)} fire-days in a usual year` +
+      (r.flagged != null ? `; this week ${r.flagged ? `${r.flagged} of ${r.districts} districts are far above usual` : "no district is far above usual"}.` : ".");
+    html += ` <a class="link" href="?region=${encodeURIComponent(other.slug)}#explore">Open ${other.name}</a> to ask about it.`;
+  } else {
+    const a = forced ? ASK.find((x) => x.id === forced)
+      : ASK_ORDER.map((id) => ASK.find((x) => x.id === id)).find((x) => x.words.test(q));
+    if (!a) {
+      html = `I can answer these questions about <b>${name}</b> from its data. Pick one below, or name a district.`;
+    } else if (a.id === "now") {
+      const st = $("status");
+      html = st && !st.hidden ? st.querySelector(".status-text").innerHTML : "There are too few years of data here to say what is usual.";
+    } else if (a.id === "season") {
+      const ps = season ? [...season.periods].sort((x, y) => y.share - x.share) : [];
+      html = ps.length
+        ? `The main burning season in <b>${name}</b> is <b>${S.doyLabel(ps[0].start)} to ${S.doyLabel(ps[0].end)}</b>, busiest around ${S.doyLabel(ps[0].peak)}; it holds ${fmt(100 * ps[0].share)}% of a typical year's burning.` +
+          (ps[1] ? ` A smaller season runs ${S.doyLabel(ps[1].start)} to ${S.doyLabel(ps[1].end)} (${fmt(100 * ps[1].share)}%).` : "")
+        : "Burning here has no clear season in the years shown.";
+    } else if (a.id === "districts") {
+      computeRecent();
+      const inSel = state.sel.kind === "districts" ? new Set(state.sel.ids) : new Set(districts?.focusIds || []);
+      const fl = recent ? recent.districts.filter((r) => r.flagged && inSel.has(r.id)).sort((x, y) => (y.now - y.median) - (x.now - x.median)) : [];
+      html = fl.length
+        ? `${fl.length} district${fl.length === 1 ? " is" : "s are"} far above usual in the last ${recent.days} days: ` +
+          fl.slice(0, 6).map((r) => `<b>${districts.districts[r.id].name}</b> (${fmt(r.now)} fire-days, usual ${fmt(r.median)}${r.record ? ", a record" : ""})`).join(", ") +
+          (fl.length > 6 ? `, and ${fl.length - 6} more.` : ".") + ` <a class="link" href="#alerts-block">See the full list</a>`
+        : `No district in ${name} is far above its usual level in the last ${recent ? recent.days : 7} days.`;
+    } else if (a.id === "trend") {
+      const annual = [...result.annualHarm.entries()].filter(([y, v]) => Number.isFinite(v) && y >= state.yearFrom && y <= state.yearTo).sort((x, y) => x[0] - y[0]);
+      const t = S.yearlyTrend(annual);
+      html = Number.isFinite(t.pct)
+        ? `From ${annual[0][0]} to ${annual.at(-1)[0]}, harmonized fire-days in <b>${name}</b> changed by <b>${t.pct > 0 ? "+" : ""}${fmt(t.pct, 1)}% a year</b>: ` +
+          (t.p < 0.05 ? `a clear ${t.pct > 0 ? "rise" : "fall"}` : "not a clear trend") + ` (Mann-Kendall p = ${fmt(t.p, 3)}).`
+        : "There are too few complete years to measure a trend.";
+    } else if (a.id === "timing") {
+      const s = $("timing-summary");
+      html = s && s.textContent ? s.innerHTML : "There are too few years to measure the season's timing here.";
+    } else if (a.id === "next") {
+      const l = $("outlook-lead");
+      html = l && l.textContent ? l.innerHTML : "There are too few years of data here for an outlook.";
+    } else if (a.id === "india") {
+      const ov = await loadOverview();
+      if (!ov) html = "The all-India calendar is not available.";
+      else {
+        const CUM = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+        const last = ov.regions.map((r) => r.alertsTo).filter(Boolean).sort().at(-1);
+        const [, m, d] = last.split("-").map(Number), today = CUM[m - 1] + d - 1;
+        const nxt = ov.regions.filter((r) => r.periods[0] && !r.periods.some((p) => (p.start <= p.end ? today >= p.start && today <= p.end : today >= p.start || today <= p.end)))
+          .map((r) => ({ r, w: (r.periods[0].start - today + 365) % 365 })).sort((x, y) => x.w - y.w);
+        html = nxt.length
+          ? `Next to start its main season: <b>${nxt[0].r.name}</b>, usually from ${S.doyLabel(nxt[0].r.periods[0].start)} (in about ${nxt[0].w} days)` +
+            (nxt[1] ? `, then ${nxt[1].r.name} from ${S.doyLabel(nxt[1].r.periods[0].start)}` : "") + `. <a class="link" href="#india">See all areas</a>`
+          : "Every study area is in its main season now.";
+      }
+    } else if (a.id === "trust") {
+      const s = result.steps, v = result.validation.summary;
+      html = s ? `Joining the raw records would make burning jump <b>×${fmt(s.rawSplice, 2)}</b> in ${s.year}; after harmonization the step is ×${fmt(s.harmonized, 2)}, close to the real change MODIS saw alone (×${fmt(s.modisOnly, 2)}).` : "";
+      if (v?.monthly) html += ` Predicting years the calibration never saw, the monthly error is ${fmt(v.monthly.wape, 1)}%` + (v.simple ? ` (${fmt(v.simple.wape, 1)}% with a single factor).` : ".");
+      html += ` <a class="link" href="#trust">How the record is built</a>`;
+    }
+  }
+  out.innerHTML = html;
+  out.hidden = false;
+  out.querySelector("[data-district]")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const id = +e.currentTarget.dataset.district;
+    state.sel = { kind: "districts", ids: [id] };
+    update();
+    $("map")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 }

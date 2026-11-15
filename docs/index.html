@@ -194,6 +194,20 @@
 
       <div class="status" id="status" aria-live="polite" hidden></div>
 
+      <div class="ask glass" id="ask">
+        <div class="ask-head">
+          <h3>Ask the calendar</h3>
+          <p class="muted small">Answers are worked out from the data on this page, so they always match the charts. No AI is used.</p>
+        </div>
+        <form class="ask-form" id="ask-form" autocomplete="off">
+          <label class="visually-hidden" for="ask-input">Your question</label>
+          <input id="ask-input" type="text" placeholder="For example: is burning unusual now? or: how is Bastar this week?">
+          <button class="btn" type="submit">Ask</button>
+        </form>
+        <div class="ask-chips" id="ask-chips" role="group" aria-label="Suggested questions"></div>
+        <div class="ask-answer" id="ask-answer" aria-live="polite" hidden></div>
+      </div>
+
       <nav class="section-tabs" aria-label="Parts of this page" id="section-tabs">
         <a href="#status">Now</a>
         <a href="#map">Map</a>
@@ -599,17 +613,17 @@
 <script type="importmap">
 {
  "imports": {
-  "./app.js": "./app.js?v=202611151126",
-  "./compare.js": "./compare.js?v=202611151126",
-  "./engine.js": "./engine.js?v=202611151126",
-  "./globe3d.js": "./globe3d.js?v=202611151126",
-  "./hotspots.js": "./hotspots.js?v=202611151126",
-  "./map.js": "./map.js?v=202611151126",
-  "./minimap.js": "./minimap.js?v=202611151126",
-  "./overview.js": "./overview.js?v=202611151126",
-  "./season.js": "./season.js?v=202611151126",
-  "./topo.js": "./topo.js?v=202611151126",
-  "./viz.js": "./viz.js?v=202611151126"
+  "./app.js": "./app.js?v=202611151129",
+  "./compare.js": "./compare.js?v=202611151129",
+  "./engine.js": "./engine.js?v=202611151129",
+  "./globe3d.js": "./globe3d.js?v=202611151129",
+  "./hotspots.js": "./hotspots.js?v=202611151129",
+  "./map.js": "./map.js?v=202611151129",
+  "./minimap.js": "./minimap.js?v=202611151129",
+  "./overview.js": "./overview.js?v=202611151129",
+  "./season.js": "./season.js?v=202611151129",
+  "./topo.js": "./topo.js?v=202611151129",
+  "./viz.js": "./viz.js?v=202611151129"
  }
 }
 </script>

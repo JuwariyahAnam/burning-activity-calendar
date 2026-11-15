@@ -700,3 +700,20 @@ button.info.term:hover, button.info.term[aria-expanded="true"] { color: var(--ac
 .india[hidden] { display: none; }
 @media (max-width: 700px) { .india-grid { min-width: 0; grid-template-columns: minmax(6.5rem, 9rem) repeat(var(--bins, 73), minmax(2px, 1fr)) 0; }
   .ig-status, .ig-status-h { display: none; } .ig-month { font-size: 0; padding-left: 0.1rem; } .ig-month::before { content: attr(data-s); font-size: 0.62rem; } .ig-sub { font-size: 0.7rem; } .ig-name { font-size: 0.85rem; } }
+
+/* Ask the calendar */
+.ask { padding: 1.1rem 1.3rem; margin: 1rem 0 1.4rem; }
+.ask-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 1rem; }
+.ask-head h3 { margin: 0; font-size: 1.05rem; }
+.ask-head p { margin: 0; }
+.ask-form { display: flex; gap: 0.6rem; margin-top: 0.8rem; }
+.ask-form input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: rgba(10,22,44,0.7);
+  border: 1px solid var(--glass-edge); border-radius: 999px; padding: 0.6rem 1rem; }
+.ask-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ask-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.8rem; }
+.ask-chip { font: 500 0.8rem var(--font); color: var(--ink-2); cursor: pointer; padding: 0.38rem 0.75rem;
+  border-radius: 999px; background: rgba(14,30,60,0.45); border: 1px solid var(--glass-edge); }
+.ask-chip:hover, .ask-chip:focus-visible { color: var(--ink); border-color: var(--accent); }
+.ask-answer { margin-top: 0.9rem; padding: 0.8rem 1rem; border-left: 3px solid var(--accent); background: rgba(92,200,242,0.07);
+  border-radius: 0 10px 10px 0; color: var(--ink); line-height: 1.5; }
+.ask-answer[hidden] { display: none; }
