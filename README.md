@@ -159,6 +159,7 @@ Cloud from the same repository.
 | `build_site.py` | Exports data for the website to `docs/data/` |
 | `boundaries.py` | State and district boundaries for the website (geoBoundaries) |
 | `regions.json`, `regions.py` | The study areas and a helper to read them |
+| `tools/overview.mjs` | All-India calendar data (`docs/data/overview.json`) from every built area, using the site's own engine; run by `build_site.py` when Node.js is installed |
 | `update.py` | Daily refresh: latest near-real-time fires, merged and rebuilt |
 | `tools/stamp_version.py` | Run after changing the website's scripts: gives them a new version so browsers do not mix old and new files |
 | `alerts.py` | Districts far above usual, written as `alerts.json` per area and an RSS feed |

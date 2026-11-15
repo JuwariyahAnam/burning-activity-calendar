@@ -34,6 +34,7 @@
   <select class="region-select" id="region-select"></select>
   <ul>
     <li class="secondary"><a href="#record">The record</a></li>
+    <li class="secondary"><a href="#india">Across India</a></li>
     <li><a href="#explore">Explore</a></li>
     <li><a href="#compare">Compare</a></li>
     <li class="tertiary detail-only"><a href="#trust">Method</a></li>
@@ -128,6 +129,24 @@
             month. Applied to <span id="story-years">2001–2011</span>, it turns MODIS into <strong>VIIRS-equivalent</strong>
             fire-days, so the record reads as one line.</p>
         </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- All of the study areas on one calendar -->
+  <section class="india" id="india" aria-labelledby="india-title">
+    <div class="wrap">
+      <div class="intro reveal">
+        <h2 id="india-title">When India burns</h2>
+        <p class="lede">The typical year in every study area on one calendar, ordered by when
+          burning peaks. Brighter means more burning; the line marks today. Choose an area to
+          open its calendar.</p>
+      </div>
+      <div class="glass india-panel">
+        <div class="india-scroll"><div class="india-grid" id="india-grid" role="img"></div></div>
+        <p class="india-takeaway" id="india-takeaway"></p>
+        <div class="india-next" id="india-next"></div>
+        <p class="muted small india-note" id="india-note"></p>
       </div>
     </div>
   </section>
@@ -580,16 +599,17 @@
 <script type="importmap">
 {
  "imports": {
-  "./app.js": "./app.js?v=202611151119",
-  "./compare.js": "./compare.js?v=202611151119",
-  "./engine.js": "./engine.js?v=202611151119",
-  "./globe3d.js": "./globe3d.js?v=202611151119",
-  "./hotspots.js": "./hotspots.js?v=202611151119",
-  "./map.js": "./map.js?v=202611151119",
-  "./minimap.js": "./minimap.js?v=202611151119",
-  "./season.js": "./season.js?v=202611151119",
-  "./topo.js": "./topo.js?v=202611151119",
-  "./viz.js": "./viz.js?v=202611151119"
+  "./app.js": "./app.js?v=202611151126",
+  "./compare.js": "./compare.js?v=202611151126",
+  "./engine.js": "./engine.js?v=202611151126",
+  "./globe3d.js": "./globe3d.js?v=202611151126",
+  "./hotspots.js": "./hotspots.js?v=202611151126",
+  "./map.js": "./map.js?v=202611151126",
+  "./minimap.js": "./minimap.js?v=202611151126",
+  "./overview.js": "./overview.js?v=202611151126",
+  "./season.js": "./season.js?v=202611151126",
+  "./topo.js": "./topo.js?v=202611151126",
+  "./viz.js": "./viz.js?v=202611151126"
  }
 }
 </script>

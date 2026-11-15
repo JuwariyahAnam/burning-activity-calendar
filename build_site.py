@@ -107,10 +107,25 @@ def write_index(root, all_regions):
         if f.exists():
             built.append((r, json.loads(f.read_text(encoding="utf-8"))))
     alerts.write_feed(root, built, regions_mod.site())
+    overview(root)
     for old in ["meta.json", "cells.bin", "districts.json", "hotspots.bin"]:   # single-area layout
         if (root / old).exists():
             (root / old).unlink()
     print(f"\nSite places: {', '.join(i['name'] for i in items) or 'none'} -> {root / 'regions.json'}")
+
+
+
+def overview(root):
+    """docs/data/overview.json for the "When India burns" calendar (needs Node.js)."""
+    import shutil
+    import subprocess
+    node, script = shutil.which("node"), Path(__file__).resolve().parent / "tools" / "overview.mjs"
+    if not node:
+        print("All-India calendar: Node.js not found; install it and run  node tools/overview.mjs")
+        return
+    r = subprocess.run([node, str(script)], capture_output=True, text=True)
+    print("All-India calendar: " + ((r.stdout.strip().splitlines() or ["done"])[-1] if r.returncode == 0
+                                    else "failed: " + (r.stderr.strip().splitlines() or ["?"])[-1]))
 
 
 def build(a):

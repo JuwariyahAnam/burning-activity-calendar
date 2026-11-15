@@ -8,6 +8,7 @@ import { createCompare } from "./compare.js";
 import { createMap } from "./map.js";
 import { createGlobe } from "./globe3d.js";
 import { createMiniMap } from "./minimap.js";
+import "./overview.js";            // "When India burns" (renders itself)
 import { loadHotspots, aggregate, intensity, redGradient } from "./hotspots.js";
 
 const $ = (id) => document.getElementById(id);
