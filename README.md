@@ -62,8 +62,8 @@ streamlit run app.py
 
 `regions.json` lists them: Punjab & Haryana (2001 onward), western Uttar
 Pradesh, Madhya Pradesh, Mizoram & Manipur, Uttarakhand, Odisha &
-Chhattisgarh, and Assam & neighbours (Assam, Meghalaya, Nagaland, Tripura)
-(2008 onward). `--region` takes one slug, several separated by commas, or
+Chhattisgarh, Assam & neighbours (Assam, Meghalaya, Nagaland, Tripura) and
+Rajasthan (2008 onward). `--region` takes one slug, several separated by commas, or
 `all`.
 Each has a bounding box, the states it covers and a one-line story. Add an
 area there and run the three commands with `--region <slug>`. The site shows
@@ -145,7 +145,7 @@ Cloud from the same repository.
    2 November 2026. Over January to October 2026, when both flew, NOAA-20
    counted 7-12% more fire-days than S-NPP in every study area (same-month
    error 8-12%), so after the handover NOAA-20 fire-days are scaled by S-NPP /
-   NOAA-20 over that overlap (`n20Scale` in each area's `meta.json`: 0.90 to
+   NOAA-20 over that overlap (`n20Scale` in each area's `meta.json`: 0.89 to
    0.94). Without it the record would step up by about 10% at the handover and
    flag districts that are not unusual.
 4. **Calibrate on the overlap.** VIIRS ≈ k × MODIS, with either one k or one

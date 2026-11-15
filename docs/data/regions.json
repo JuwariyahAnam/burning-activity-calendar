@@ -118,6 +118,23 @@
    ],
    "from": 2008,
    "sample": false
+  },
+  {
+   "slug": "rajasthan",
+   "name": "Rajasthan",
+   "story": "Crop-residue burning after the spring harvest, March to May, and again after the October harvest.",
+   "bbox": [
+    23.0,
+    69.4,
+    30.2,
+    78.3
+   ],
+   "center": [
+    26.6,
+    73.85
+   ],
+   "from": 2008,
+   "sample": false
   }
  ]
 }

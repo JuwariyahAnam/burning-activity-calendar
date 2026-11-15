@@ -126,6 +126,21 @@
    "raw": "raw/assam-neighbours/*.csv",
    "data": "data/assam-neighbours/cell_days.csv.gz",
    "story": "Assam, Meghalaya, Nagaland and Tripura: shifting cultivation and grassland fires in the hills, peaking February to April."
+  },
+  {
+   "slug": "rajasthan",
+   "name": "Rajasthan",
+   "bbox": "69.4,23.0,78.3,30.2",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Rajasthan"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/rajasthan/*.csv",
+   "data": "data/rajasthan/cell_days.csv.gz",
+   "story": "Crop-residue burning after the spring harvest, March to May, and again after the October harvest."
   }
  ]
 }
