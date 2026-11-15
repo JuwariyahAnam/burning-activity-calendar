@@ -50,6 +50,40 @@
    ],
    "from": 2008,
    "sample": false
+  },
+  {
+   "slug": "mizoram-manipur",
+   "name": "Mizoram & Manipur",
+   "story": "Shifting cultivation (jhum): hill plots cleared by fire, peaking in March and April.",
+   "bbox": [
+    21.9,
+    92.2,
+    25.7,
+    94.8
+   ],
+   "center": [
+    23.799999999999997,
+    93.5
+   ],
+   "from": 2008,
+   "sample": false
+  },
+  {
+   "slug": "uttarakhand",
+   "name": "Uttarakhand",
+   "story": "Himalayan forest fires in the dry pre-monsoon months, April to June.",
+   "bbox": [
+    28.7,
+    77.5,
+    31.5,
+    81.1
+   ],
+   "center": [
+    30.1,
+    79.3
+   ],
+   "from": 2008,
+   "sample": false
   }
  ]
 }

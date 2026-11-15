@@ -1,0 +1,67 @@
+{
+ "region": "Uttarakhand",
+ "days": 7,
+ "from": "2026-11-07",
+ "to": "2026-11-13",
+ "years": 18,
+ "method": "monthly",
+ "flagged": [
+  {
+   "id": 15,
+   "district": "Hardwar",
+   "state": "Uttarakhand",
+   "now": 6.0,
+   "usual": 2.0,
+   "ratio": 3.0,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 17 of 18 years"
+  }
+ ],
+ "closest": [
+  {
+   "id": 9,
+   "district": "Nainital",
+   "state": "Uttarakhand",
+   "now": 3.0,
+   "usual": 2.5,
+   "ratio": 1.2,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 9 of 18 years"
+  },
+  {
+   "id": 21,
+   "district": "Udham Singh Nagar",
+   "state": "Uttarakhand",
+   "now": 12.0,
+   "usual": 24.5,
+   "ratio": 0.49,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 2 of 18 years"
+  },
+  {
+   "id": 11,
+   "district": "Almora",
+   "state": "Uttarakhand",
+   "now": 1.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 12 of 18 years"
+  },
+  {
+   "id": 20,
+   "district": "Chamoli",
+   "state": "Uttarakhand",
+   "now": 1.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 12 of 18 years"
+  }
+ ]
+}

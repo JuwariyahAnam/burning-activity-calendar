@@ -1,0 +1,66 @@
+{
+ "region": "Mizoram & Manipur",
+ "days": 7,
+ "from": "2026-11-08",
+ "to": "2026-11-14",
+ "years": 18,
+ "method": "monthly",
+ "flagged": [],
+ "closest": [
+  {
+   "id": 23,
+   "district": "Kangpokpi",
+   "state": "Manipur",
+   "now": 1.0,
+   "usual": 2.0,
+   "ratio": 0.5,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 4 of 18 years"
+  },
+  {
+   "id": 8,
+   "district": "Lunglei",
+   "state": "Mizoram",
+   "now": 1.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 14 of 18 years"
+  },
+  {
+   "id": 15,
+   "district": "Mamit",
+   "state": "Mizoram",
+   "now": 1.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 18 of 18 years"
+  },
+  {
+   "id": 17,
+   "district": "Tamenglong",
+   "state": "Manipur",
+   "now": 3.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 17 of 18 years"
+  },
+  {
+   "id": 19,
+   "district": "Bishnupur",
+   "state": "Manipur",
+   "now": 1.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 12 of 18 years"
+  }
+ ]
+}
