@@ -2,7 +2,7 @@
 
 NASA Space Apps Challenge 2026, "Harmonization of MODIS and VIIRS Hot Spots".
 
-Team: Suhani Koul, Deepankar Anand, Riya Rajesh.
+Team: Juwariyah Anam, Suhani Koul, Deepankar Anand, Riya Rajesh.
 Live site: https://juwariyahanam.github.io/burning-activity-calendar/
 
 A web app that turns MODIS and VIIRS active fire hotspots from NASA FIRMS
