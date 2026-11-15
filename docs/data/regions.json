@@ -101,6 +101,23 @@
    ],
    "from": 2008,
    "sample": false
+  },
+  {
+   "slug": "assam-neighbours",
+   "name": "Assam & neighbours",
+   "story": "Assam, Meghalaya, Nagaland and Tripura: shifting cultivation and grassland fires in the hills, peaking February to April.",
+   "bbox": [
+    22.9,
+    89.6,
+    28.0,
+    96.2
+   ],
+   "center": [
+    25.45,
+    92.9
+   ],
+   "from": 2008,
+   "sample": false
   }
  ]
 }

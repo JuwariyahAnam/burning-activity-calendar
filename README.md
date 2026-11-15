@@ -55,7 +55,10 @@ streamlit run app.py
 ### Study areas
 
 `regions.json` lists them: Punjab & Haryana (2001 onward), western Uttar
-Pradesh, Madhya Pradesh, Mizoram & Manipur and Uttarakhand (2008 onward).
+Pradesh, Madhya Pradesh, Mizoram & Manipur, Uttarakhand, Odisha &
+Chhattisgarh, and Assam & neighbours (Assam, Meghalaya, Nagaland, Tripura)
+(2008 onward). `--region` takes one slug, several separated by commas, or
+`all`.
 Each has a bounding box, the states it covers and a one-line story. Add an
 area there and run the three commands with `--region <slug>`. The site shows
 a pin and a chip for every built area; `?region=<slug>` opens one directly.

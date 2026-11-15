@@ -1,0 +1,144 @@
+{
+ "region": "Assam & neighbours",
+ "days": 7,
+ "from": "2026-11-09",
+ "to": "2026-11-15",
+ "years": 18,
+ "method": "monthly",
+ "flagged": [
+  {
+   "id": 41,
+   "district": "Kokrajhar",
+   "state": "Assam",
+   "now": 5.6,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 17 of 18 years"
+  },
+  {
+   "id": 27,
+   "district": "Lakhimpur",
+   "state": "Assam",
+   "now": 8.4,
+   "usual": 1.0,
+   "ratio": 8.41,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 29,
+   "district": "Baksa",
+   "state": "Assam",
+   "now": 8.4,
+   "usual": 1.0,
+   "ratio": 8.41,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 17 of 18 years"
+  },
+  {
+   "id": 97,
+   "district": "Biswanath",
+   "state": "Assam",
+   "now": 5.6,
+   "usual": 1.0,
+   "ratio": 5.6,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 21,
+   "district": "Tinsukia",
+   "state": "Assam",
+   "now": 13.1,
+   "usual": 2.5,
+   "ratio": 5.23,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 34,
+   "district": "Dibrugarh",
+   "state": "Assam",
+   "now": 19.6,
+   "usual": 6.3,
+   "ratio": 3.12,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 24,
+   "district": "Dhemaji",
+   "state": "Assam",
+   "now": 9.3,
+   "usual": 4.0,
+   "ratio": 2.33,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  }
+ ],
+ "closest": [
+  {
+   "id": 19,
+   "district": "Sivasagar",
+   "state": "Assam",
+   "now": 2.8,
+   "usual": 0.5,
+   "ratio": 5.6,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 14 of 18 years"
+  },
+  {
+   "id": 82,
+   "district": "West Khasi Hills",
+   "state": "Meghalaya",
+   "now": 2.8,
+   "usual": 0.5,
+   "ratio": 5.6,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  },
+  {
+   "id": 26,
+   "district": "Karbi Anglong East",
+   "state": "Assam",
+   "now": 3.7,
+   "usual": 1.0,
+   "ratio": 3.74,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 17 of 18 years"
+  },
+  {
+   "id": 40,
+   "district": "Dima Hasao",
+   "state": "Assam",
+   "now": 3.7,
+   "usual": 1.0,
+   "ratio": 3.74,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 17 of 18 years"
+  },
+  {
+   "id": 38,
+   "district": "Golaghat",
+   "state": "Assam",
+   "now": 2.8,
+   "usual": 1.0,
+   "ratio": 2.8,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 14 of 18 years"
+  }
+ ]
+}
