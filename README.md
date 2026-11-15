@@ -177,6 +177,10 @@ Cloud from the same repository.
 
 - NASA FIRMS active fire data: MODIS Collection 6.1 and VIIRS 375 m
   (S-NPP, NOAA-20). https://firms.modaps.eosdis.nasa.gov/
+  We acknowledge the use of data and/or imagery from NASA's Fire Information for
+  Resource Management System (FIRMS) (https://www.earthdata.nasa.gov/firms), part of
+  NASA's Earth Science Data and Information System (ESDIS); near-real-time data come
+  from NASA's LANCE.
 - State and district boundaries: geoBoundaries (Runfola, D. et al. 2020, PLOS ONE
   15(4): e0231866), India ADM1/ADM2 simplified, Open Database License. Downloaded by
   `build_site.py` (cached in `data/boundaries/`); shown for reference only.
