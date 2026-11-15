@@ -62,7 +62,7 @@ async function load() {
   $("sample-banner").hidden = !meta.sample;
   document.body.classList.toggle("has-banner", !!meta.sample);
   document.querySelectorAll(".region-name").forEach((n) => (n.textContent = meta.region));
-  $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so fire managers, scientists and land managers can see when burning happens and whether this season is unusual.`;
+  $("hero-text").textContent = `Since ${E.dayToDate(meta, meta.coverage.MODIS[0]).getUTCFullYear()}, NASA satellites have logged burning across ${meta.region}, with two instruments that count differently. This calendar puts them on one scale, so early-warning teams, emergency responders, firefighters, scientists and land managers can see when burning happens and whether this season is unusual.`;
   $("data-note").textContent = `Data processed ${meta.generated}. Records from ${fmtDate(meta.coverage.MODIS[0])} to ${fmtDate(Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]))}.`;
 
   hero();
