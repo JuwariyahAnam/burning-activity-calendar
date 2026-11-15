@@ -101,7 +101,7 @@
    "clip": false,
    "raw": "raw/odisha-chhattisgarh/*.csv",
    "data": "data/odisha-chhattisgarh/cell_days.csv.gz",
-   "story": "Forest fires in the dry months, February to May, across the sal forests of central-east India."
+   "story": "Forest fires in the dry season, late February to April, across the sal forests of central-east India."
   },
   {
    "slug": "assam-neighbours",

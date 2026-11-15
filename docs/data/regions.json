@@ -84,6 +84,23 @@
    ],
    "from": 2008,
    "sample": false
+  },
+  {
+   "slug": "odisha-chhattisgarh",
+   "name": "Odisha & Chhattisgarh",
+   "story": "Forest fires in the dry season, late February to April, across the sal forests of central-east India.",
+   "bbox": [
+    17.7,
+    80.2,
+    24.2,
+    87.6
+   ],
+   "center": [
+    20.95,
+    83.9
+   ],
+   "from": 2008,
+   "sample": false
   }
  ]
 }

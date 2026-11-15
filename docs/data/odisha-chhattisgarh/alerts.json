@@ -1,0 +1,232 @@
+{
+ "region": "Odisha & Chhattisgarh",
+ "days": 7,
+ "from": "2026-11-09",
+ "to": "2026-11-15",
+ "years": 18,
+ "method": "monthly",
+ "flagged": [
+  {
+   "id": 46,
+   "district": "Bastar",
+   "state": "Chhattisgarh",
+   "now": 10.0,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": true,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  },
+  {
+   "id": 64,
+   "district": "Koriya",
+   "state": "Chhattisgarh",
+   "now": 7.2,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 70,
+   "district": "Janjgir-Champa",
+   "state": "Chhattisgarh",
+   "now": 6.3,
+   "usual": 0.0,
+   "ratio": null,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 98,
+   "district": "Sambalpur",
+   "state": "Odisha",
+   "now": 12.7,
+   "usual": 1.0,
+   "ratio": 12.67,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 48,
+   "district": "Bilaspur",
+   "state": "Chhattisgarh",
+   "now": 17.2,
+   "usual": 1.5,
+   "ratio": 11.46,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 107,
+   "district": "Kendujhar",
+   "state": "Odisha",
+   "now": 19.0,
+   "usual": 2.0,
+   "ratio": 9.5,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 103,
+   "district": "Jajapur",
+   "state": "Odisha",
+   "now": 8.1,
+   "usual": 1.0,
+   "ratio": 8.15,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 87,
+   "district": "Anugul",
+   "state": "Odisha",
+   "now": 37.1,
+   "usual": 6.0,
+   "ratio": 6.18,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 61,
+   "district": "Raipur",
+   "state": "Chhattisgarh",
+   "now": 29.0,
+   "usual": 5.0,
+   "ratio": 5.79,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 109,
+   "district": "Sundargarh",
+   "state": "Odisha",
+   "now": 35.3,
+   "usual": 6.5,
+   "ratio": 5.43,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 67,
+   "district": "Raigarh",
+   "state": "Chhattisgarh",
+   "now": 33.5,
+   "usual": 7.0,
+   "ratio": 4.78,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 62,
+   "district": "Baloda Bazar",
+   "state": "Chhattisgarh",
+   "now": 12.7,
+   "usual": 3.0,
+   "ratio": 4.22,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 58,
+   "district": "Durg",
+   "state": "Chhattisgarh",
+   "now": 13.6,
+   "usual": 3.5,
+   "ratio": 3.88,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 66,
+   "district": "Korba",
+   "state": "Chhattisgarh",
+   "now": 19.0,
+   "usual": 5.0,
+   "ratio": 3.8,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  },
+  {
+   "id": 112,
+   "district": "Jharsuguda",
+   "state": "Odisha",
+   "now": 18.1,
+   "usual": 8.0,
+   "ratio": 2.26,
+   "flagged": true,
+   "record": true,
+   "rank": "highest in 18 years"
+  }
+ ],
+ "closest": [
+  {
+   "id": 102,
+   "district": "Cuttack",
+   "state": "Odisha",
+   "now": 2.7,
+   "usual": 0.5,
+   "ratio": 5.43,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 15 of 18 years"
+  },
+  {
+   "id": 52,
+   "district": "Uttar Bastar Kanker",
+   "state": "Chhattisgarh",
+   "now": 3.6,
+   "usual": 1.0,
+   "ratio": 3.62,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 14 of 18 years"
+  },
+  {
+   "id": 90,
+   "district": "Nabarangapur",
+   "state": "Odisha",
+   "now": 3.6,
+   "usual": 1.0,
+   "ratio": 3.62,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 16 of 18 years"
+  },
+  {
+   "id": 71,
+   "district": "Rajnandgaon",
+   "state": "Chhattisgarh",
+   "now": 7.2,
+   "usual": 4.0,
+   "ratio": 1.81,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 10 of 18 years"
+  },
+  {
+   "id": 89,
+   "district": "Koraput",
+   "state": "Odisha",
+   "now": 0.9,
+   "usual": 0.5,
+   "ratio": 1.81,
+   "flagged": false,
+   "record": false,
+   "rank": "more than 9 of 18 years"
+  }
+ ]
+}
