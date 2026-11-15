@@ -326,16 +326,20 @@ export function createGlobe(root, { meta, districts, fireDots, onPlace, describe
         const w = g.measureText(r.name).width;
         // first free spot: right, left, right above, right below, left above, left below
         const spots = [[10, 0, "left"], [-10, 0, "right"], [10, -15, "left"], [10, 15, "left"],
-                       [-10, -15, "right"], [-10, 15, "right"]];
+                       [-10, -15, "right"], [-10, 15, "right"], [10, -29, "left"], [10, 29, "left"],
+                       [-10, -29, "right"], [-10, 29, "right"]];
+        let placed = false;
         for (const [dx, dy, al] of spots) {
           const x0 = al === "left" ? x + dx : x + dx - w, box = [x0 - 2, y + dy - 8, x0 + w + 2, y + dy + 8];
           if (labelBoxes.every((q) => box[2] < q[0] || box[0] > q[2] || box[3] < q[1] || box[1] > q[3])) {
-            labelBoxes.push(box); lx = x + dx; ly = y + dy; align = al; break;
+            labelBoxes.push(box); lx = x + dx; ly = y + dy; align = al; placed = true; break;
           }
         }
-        g.textAlign = align; g.textBaseline = "middle";
-        g.lineWidth = 3; g.strokeStyle = "rgba(3,9,21,0.75)"; g.strokeText(r.name, lx, ly);
-        g.fillStyle = on ? "#ffffff" : "rgba(235,241,250,0.85)"; g.fillText(r.name, lx, ly);
+        if (placed || on) {   // no free spot: leave that label out rather than overprint (the pin still works)
+          g.textAlign = align; g.textBaseline = "middle";
+          g.lineWidth = 3; g.strokeStyle = "rgba(3,9,21,0.75)"; g.strokeText(r.name, lx, ly);
+          g.fillStyle = on ? "#ffffff" : "rgba(235,241,250,0.85)"; g.fillText(r.name, lx, ly);
+        }
       }
       pinHits.push({ x, y, slug: r.slug, name: r.name, lx, ly, align });
     }
