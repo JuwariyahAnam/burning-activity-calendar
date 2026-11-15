@@ -83,6 +83,82 @@
    "raw": "raw/uttarakhand/*.csv",
    "data": "data/uttarakhand/cell_days.csv.gz",
    "story": "Himalayan forest fires in the dry pre-monsoon months, April to June."
+  },
+  {
+   "slug": "odisha-chhattisgarh",
+   "name": "Odisha & Chhattisgarh",
+   "bbox": "80.2,17.7,87.6,24.2",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Odisha",
+     "Orissa"
+    ],
+    [
+     "Chhattisgarh"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/odisha-chhattisgarh/*.csv",
+   "data": "data/odisha-chhattisgarh/cell_days.csv.gz",
+   "story": "Forest fires in the dry months, February to May, across the sal forests of central-east India."
+  },
+  {
+   "slug": "assam-neighbours",
+   "name": "Assam & neighbours",
+   "bbox": "89.6,22.9,96.2,28.0",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Assam"
+    ],
+    [
+     "Meghalaya"
+    ],
+    [
+     "Nagaland"
+    ],
+    [
+     "Tripura"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/assam-neighbours/*.csv",
+   "data": "data/assam-neighbours/cell_days.csv.gz",
+   "story": "Assam, Meghalaya, Nagaland and Tripura: shifting cultivation and grassland fires in the hills, peaking February to April."
+  },
+  {
+   "slug": "rajasthan",
+   "name": "Rajasthan",
+   "bbox": "69.4,23.0,78.3,30.2",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Rajasthan"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/rajasthan/*.csv",
+   "data": "data/rajasthan/cell_days.csv.gz",
+   "story": "Crop-residue burning in the irrigated north next to Punjab, after the October and April harvests."
+  },
+  {
+   "slug": "telangana-andhra",
+   "name": "Telangana & Andhra Pradesh",
+   "bbox": "76.7,12.6,84.8,20.0",
+   "start": "2008-01-01",
+   "states": [
+    [
+     "Telangana"
+    ],
+    [
+     "Andhra Pradesh"
+    ]
+   ],
+   "clip": false,
+   "raw": "raw/telangana-andhra/*.csv",
+   "data": "data/telangana-andhra/cell_days.csv.gz",
+   "story": "Dry-season fires in the Deccan and Eastern Ghats forests, peaking February to April."
   }
  ]
 }

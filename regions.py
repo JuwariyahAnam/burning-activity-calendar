@@ -21,15 +21,17 @@ def site():
 
 
 def pick(slug):
-    """One region by slug, or all of them for 'all'."""
+    """Regions by slug: one, several separated by commas (in that order), or 'all'."""
     regions = load()
     if slug == "all":
         return regions
-    found = [r for r in regions if r["slug"] == slug]
-    if not found:
+    by_slug = {r["slug"]: r for r in regions}
+    wanted = [s.strip() for s in slug.split(",") if s.strip()]
+    unknown = [s for s in wanted if s not in by_slug]
+    if unknown or not wanted:
         names = ", ".join(r["slug"] for r in regions)
-        raise SystemExit(f"Unknown region {slug!r}. Choose one of: {names}, or all.")
-    return found
+        raise SystemExit(f"Unknown region {', '.join(unknown) or slug!r}. Choose from: {names}, or all.")
+    return [by_slug[s] for s in wanted]
 
 
 def raw_dir(region):
