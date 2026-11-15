@@ -20,6 +20,8 @@ What it offers, for any study area, district or drawn rectangle:
   each day of the year, with this year (and any other) on top.
 - **Season timing**: for each year, when 10%, 50% and 90% of each season's
   burning had happened, with trend tests (Theil-Sen slope, Mann-Kendall).
+- **Pick a district**: click the district box to choose from every district in
+  the area, grouped by state, or type a name to search all study areas.
 - **Districts**: this month against usual and the long-term trend per district,
   with close-up maps of fire locations and intensity.
 - **Burning more than usual**: districts far above their usual level in the last
