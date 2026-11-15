@@ -630,6 +630,7 @@ function renderTiming() {
 
 // red dots on the map for the years shown (recomputed only when the years change)
 function renderMapDots() {
+  if (state.dates) { renderDateDots(); return; }
   const key = `${state.yearFrom}|${state.yearTo}`;
   if (key === dotsKey) return;
   dotsKey = key;
@@ -951,6 +952,7 @@ function wireEase() {
 
   wireFinder();
   wireAsk();
+  wireDates();
 
   // section tabs: mark the part on screen
   const tabs = [...$("section-tabs").querySelectorAll("a")];
@@ -1236,4 +1238,127 @@ async function answerAsk(text, forced) {
     update();
     $("map")?.scrollIntoView({ behavior: "smooth", block: "center" });
   });
+}
+
+
+// ---------------------------------------------------- fires between two dates
+// The map can show the fires of any date range: each 10 km cell with at least
+// one detection in it, from VIIRS where it flew and MODIS before. A line
+// compares the harmonized fire-days of those dates with the same dates in
+// every other year.
+const DAY_MS = 864e5;
+const isoToDay = (v) => Math.round((Date.parse(`${v}T00:00:00Z`) - Date.parse(`${meta.date0}T00:00:00Z`)) / DAY_MS);
+const dayToIso = (d) => E.dayToDate(meta, d).toISOString().slice(0, 10);
+const shortDate = (d, withYear = true) => E.dayToDate(meta, d).toLocaleDateString("en-GB",
+  { day: "numeric", month: "short", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" });
+
+function wireDates() {
+  const from = $("d-from"), to = $("d-to");
+  if (!from) return;
+  const set = () => {
+    const first = Math.min(meta.coverage.MODIS[0], meta.coverage.VIIRS[0]);
+    const last = Math.max(meta.coverage.MODIS[1], meta.coverage.VIIRS[1]);
+    for (const el of [from, to]) { el.min = dayToIso(first); el.max = dayToIso(last); }
+  };
+  set();
+  const apply = () => {
+    if (!from.value && !to.value) return clearDates();
+    let a = from.value ? isoToDay(from.value) : null, b = to.value ? isoToDay(to.value) : null;
+    if (a == null) a = b; if (b == null) b = a;
+    if (a > b) [a, b] = [b, a];
+    state.dates = { from: a, to: b };
+    $("d-clear").hidden = false;
+    dotsKey = "";
+    renderMapDots();
+  };
+  from.addEventListener("change", apply);
+  to.addEventListener("change", apply);
+  $("d-clear").addEventListener("click", clearDates);
+}
+
+function clearDates() {
+  state.dates = null;
+  $("d-from").value = ""; $("d-to").value = "";
+  $("d-clear").hidden = true;
+  $("date-summary").hidden = true;
+  dotsKey = "";
+  renderMapDots();
+}
+
+function renderDateDots() {
+  const { from: d0, to: d1 } = state.dates;
+  const key = `dates|${d0}|${d1}`;
+  if (key === dotsKey) { renderDateSummary(); return; }
+  dotsKey = key;
+  const vA = meta.coverage.VIIRS[0], cd = districts?.cellDistrict;
+  const out = new Map();
+  for (let i = 0; i < rows.day.length; i++) {
+    const d = rows.day[i];
+    if (d < d0 || d > d1) continue;
+    const c = rows.cell[i], f = rows.flags[i];
+    if (cd && cd[c] < 0) continue;
+    const hit = d >= vA ? f & (E.FLAG.SNPP | E.FLAG.NOAA20) : f & (E.FLAG.TERRA | E.FLAG.AQUA);
+    if (!hit) continue;
+    const s = out.get(c) || { lat: meta.cells[c][0], lon: meta.cells[c][1], n: 0, frp: NaN,
+                              district: cd ? cd[c] : -1, size: meta.cellDeg };
+    s.n++; out.set(c, s);
+  }
+  const dots = [...out.values()];
+  map.setDots(dots, intensity(dots, false));
+  const span = d0 === d1 ? shortDate(d0) : `${shortDate(d0, E.dayToDate(meta, d0).getUTCFullYear() !== E.dayToDate(meta, d1).getUTCFullYear())} – ${shortDate(d1)}`;
+  $("map-legend").innerHTML = `Fires detected, ${span}
+    <div class="bar" style="background:${redGradient}"></div>
+    <div class="ends"><span>Fewer</span><span>More fire-days</span></div>
+    <div class="ends"><span>Dots are 10 km cells with a fire</span></div>
+    ${districts ? `<div class="lines"><span><i style="border-top:1.6px solid rgba(225,238,255,.8)"></i>State</span><span><i style="border-top:1px solid rgba(170,205,255,.5)"></i>District</span></div>` : ""}`;
+  state.dateCells = dots.length;
+  renderDateSummary();
+}
+
+function renderDateSummary() {
+  const box = $("date-summary");
+  if (!state.dates || !result) { box.hidden = true; return; }
+  const { from: d0, to: d1 } = state.dates, harm = result.harm;
+  const sumSpan = (a, b) => {
+    let t = 0;
+    for (let d = a; d <= b; d++) {
+      const i = d - harm.start;
+      if (i < 0 || i >= harm.len || Number.isNaN(harm.h[i])) return NaN;
+      t += harm.h[i];
+    }
+    return t;
+  };
+  const now = sumSpan(d0, d1);
+  const a = E.dayToDate(meta, d0), b = E.dayToDate(meta, d1);
+  const base = Date.parse(`${meta.date0}T00:00:00Z`);
+  const others = [];
+  if (d1 - d0 <= 366) {
+    for (let y = 2000; y <= 2100; y++) {
+      const dy = y - a.getUTCFullYear();
+      if (dy === 0) continue;
+      const s = Math.round((Date.UTC(a.getUTCFullYear() + dy, a.getUTCMonth(), a.getUTCDate()) - base) / DAY_MS);
+      const e = Math.round((Date.UTC(b.getUTCFullYear() + dy, b.getUTCMonth(), b.getUTCDate()) - base) / DAY_MS);
+      if (s < harm.start || e >= harm.start + harm.len) continue;
+      const v = sumSpan(s, e);
+      if (Number.isFinite(v)) others.push(v);
+    }
+  }
+  const name = selName(state.sel).replace(/\s*\(\d+ districts?\)$/, "");
+  const span = d0 === d1 ? shortDate(d0) : `${shortDate(d0)} to ${shortDate(d1)}`;
+  let text = `<b>${span}</b> in ${name}: `;
+  if (!Number.isFinite(now)) text += "the satellites did not observe every day of this period, so no total is given.";
+  else {
+    text += `<b>${fmt(now)} fire-days</b> (harmonized)`;
+    if (others.length >= 3) {
+      const sorted = [...others].sort((x, y) => x - y), med = median(sorted);
+      const more = others.filter((v) => v < now).length;
+      const diff = med > 0 ? 100 * (now / med - 1) : NaN;
+      text += `, against a usual ${fmt(med)} for the same dates (median of ${others.length} other years)` +
+        (Number.isFinite(diff) ? `: ${pct(diff)}` : "") + `. More burning than in ${more} of ${others.length} other years.`;
+    } else text += ".";
+  }
+  text += ` The map shows the ${fmt(state.dateCells || 0)} grid cells with a fire in these dates. <button class="link" type="button" id="d-clear-2">Show all dates again</button>`;
+  box.innerHTML = text;
+  box.hidden = false;
+  $("d-clear-2")?.addEventListener("click", clearDates);
 }

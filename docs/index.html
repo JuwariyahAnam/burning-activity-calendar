@@ -188,6 +188,8 @@
             years, so a bright column is the burning season.</li>
           <li><b>Ask a question.</b> Under the status card, pick a question or type one, such as
             "how is Panna this week?". Answers come straight from the data.</li>
+          <li><b>Pick any dates.</b> Under the map, choose a from and to date to see just the fires
+            of those days, compared with the same dates in other years.</li>
           <li><b>See the whole country.</b> "When India burns", near the top, shows when every study
             area usually burns and which one starts next.</li>
           <li><b>Go deeper if you need to.</b> See which districts burn most, what the next two weeks
@@ -275,9 +277,18 @@
             <label class="visually-hidden" for="y-to">To</label><select id="y-to"></select>
           </div>
         </div>
+        <div class="field dates-field">
+          <span>Dates on the map</span>
+          <div class="coords">
+            <label class="visually-hidden" for="d-from">From date</label><input id="d-from" type="date">
+            <label class="visually-hidden" for="d-to">To date</label><input id="d-to" type="date">
+            <button class="btn quiet" type="button" id="d-clear" hidden>All dates</button>
+          </div>
+        </div>
         <label class="switch detail-only"><input type="checkbox" id="aqua-only"> MODIS: Aqua only</label>
         <label class="switch detail-only"><input type="checkbox" id="viirs-all"> VIIRS: all satellites</label>
       </form>
+      <p class="date-summary" id="date-summary" aria-live="polite" hidden></p>
       <p class="message" id="message" hidden></p>
 
       <div class="selection-row">
@@ -617,17 +628,17 @@
 <script type="importmap">
 {
  "imports": {
-  "./app.js": "./app.js?v=202611151203",
-  "./compare.js": "./compare.js?v=202611151203",
-  "./engine.js": "./engine.js?v=202611151203",
-  "./globe3d.js": "./globe3d.js?v=202611151203",
-  "./hotspots.js": "./hotspots.js?v=202611151203",
-  "./map.js": "./map.js?v=202611151203",
-  "./minimap.js": "./minimap.js?v=202611151203",
-  "./overview.js": "./overview.js?v=202611151203",
-  "./season.js": "./season.js?v=202611151203",
-  "./topo.js": "./topo.js?v=202611151203",
-  "./viz.js": "./viz.js?v=202611151203"
+  "./app.js": "./app.js?v=202611151213",
+  "./compare.js": "./compare.js?v=202611151213",
+  "./engine.js": "./engine.js?v=202611151213",
+  "./globe3d.js": "./globe3d.js?v=202611151213",
+  "./hotspots.js": "./hotspots.js?v=202611151213",
+  "./map.js": "./map.js?v=202611151213",
+  "./minimap.js": "./minimap.js?v=202611151213",
+  "./overview.js": "./overview.js?v=202611151213",
+  "./season.js": "./season.js?v=202611151213",
+  "./topo.js": "./topo.js?v=202611151213",
+  "./viz.js": "./viz.js?v=202611151213"
  }
 }
 </script>

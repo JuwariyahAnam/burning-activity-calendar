@@ -27,6 +27,8 @@ What it offers, for any study area, district or drawn rectangle:
   (`docs/data/alerts.xml`), a JSON file per area and a link to NASA FIRMS email
   alerts for the same area.
 - **Compare two places**: any two areas or districts side by side, per 1,000 km².
+- **Fires between two dates**: pick any date range to map just those fires, with
+  the harmonized total compared with the same dates in every other year.
 - **When India burns**: every study area's typical year on one calendar, ordered
   by peak, with today marked, which areas are in season now and which start next.
 - **Ask the calendar**: plain questions (unusual now? main season? which
