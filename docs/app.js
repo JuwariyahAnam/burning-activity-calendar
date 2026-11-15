@@ -15,7 +15,8 @@ const $ = (id) => document.getElementById(id);
 const DEFAULT_METHOD = "monthly";            // the team's chosen calibration
 const state = { sel: null, method: DEFAULT_METHOD, aquaOnly: false, viirsAll: false,
                 yearFrom: null, yearTo: null, calMode: "activity", allDistricts: false,
-                compareYear: null, timingIdx: null, alertDays: 7, alertSort: { key: "ratio", dir: -1 } };
+                compareYear: null, timingIdx: null, alertDays: 7, alertSort: { key: "ratio", dir: -1 },
+                view: "simple" };
 let season = null;                           // typical year for the current selection
 let compare = null;
 let hot = null, dotsKey = "";
@@ -74,6 +75,7 @@ async function load() {
   if (districts) mini = createMiniMap($("mini"), meta, districts, rows,
     { onToggle: (w) => map.setInset(innerWidth >= 700 ? w : 0) });
   wireControls();
+  wireEase();
   compare = createCompare($("compare"), { regions, current, meta, rows, districts, state,
                                          getSel: () => state.sel, selName });
   update();
@@ -82,6 +84,12 @@ async function load() {
   if (location.hash === "#fly") {               // arrived from another area's pin
     history.replaceState(null, "", location.pathname + location.search);
     setTimeout(() => globe.flyToArea(), reduced() ? 0 : 700);
+  } else if (location.hash === "#explore") {    // arrived from the district search
+    history.replaceState(null, "", location.pathname + location.search);
+    setTimeout(() => {
+      $("map").scrollIntoView({ behavior: "auto", block: "start" });
+      if (mini && state.sel.kind === "districts" && state.sel.ids.length === 1) mini.open(state.sel.ids[0], [state.yearFrom, state.yearTo]);
+    }, 50);
   }
 }
 
@@ -269,7 +277,7 @@ function wireControls() {
   $("alert-days").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     $("alert-days").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
-    state.alertDays = +b.dataset.v; renderAlerts();
+    state.alertDays = +b.dataset.v; renderAlerts(); renderStatus();
   });
   $("timing-season").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -315,6 +323,7 @@ function viewUrl() {
   if (state.aquaOnly) q.set("aqua", "1");
   if (state.viirsAll) q.set("viirs", "all");
   if (state.compareYear) q.set("compare", state.compareYear);
+  if (state.view === "detailed") q.set("view", "detailed");
   const qs = q.toString().replace(/%3A/g, ":").replace(/%2C/g, ",");
   return `${location.origin}${location.pathname}${qs ? `?${qs}` : ""}`;
 }
@@ -418,6 +427,7 @@ function renderAll() {
   renderFreshness();
   renderOutlook();
   renderAlerts();
+  renderStatus();
   renderCalendarBlock();
   renderSeason();
   renderTiming();
@@ -425,6 +435,7 @@ function renderAll() {
   renderTrust();
   compare?.render();
   writeUrl();
+  updateTabs();
 }
 
 // ------------------------------------------------- outlook (early warning)
@@ -862,3 +873,202 @@ function downloadCells() {
 }
 
 load();
+
+
+// =================================================== easier to use
+// simple and detailed views, the status card, explanations, district search
+
+const GLOSSARY = {
+  "fire-day": "A fire-day is one 10 km square with at least one fire seen by a satellite on one day. It shows how much and how often an area burns, not how many fires there were or how big they were.",
+  harmonized: "Harmonized means the older MODIS counts are scaled to the newer VIIRS level, so the record from 2001 reads as one line with no false jump in 2012.",
+  modis: "MODIS is a NASA instrument on the Terra and Aqua satellites. It has looked for fires in 1 km pixels since 2000.",
+  viirs: "VIIRS is a newer instrument on the Suomi NPP and NOAA-20 satellites. Its 375 m pixels catch small fires MODIS misses, so it counts about 2 to 3 times more.",
+  usual: "Usual is the middle value of the same dates in earlier years: half of those years had more burning, half had less.",
+  "far-above": "Far more than usual means more fire-days than in 9 of 10 earlier years on the same dates, and at least one and a half times the usual amount.",
+  trend: "The trend is how fast yearly burning in the district has been rising or falling, as a share of a typical year. Faded numbers are not a clear trend.",
+  critical: "Critical periods are the weeks when burning is usually at its highest. They are the times to plan monitoring and staff for.",
+  "clear-trend": "A clear trend is a change so steady it would rarely happen by chance (a p-value below 0.05). Otherwise the change may just be year-to-year noise.",
+  "per-area": "Per 1,000 km² divides fire-days by the size of the place, so a small district and a large state can be compared fairly.",
+};
+
+function setView(v, save = true) {
+  state.view = v === "detailed" ? "detailed" : "simple";
+  document.body.classList.toggle("simple", state.view === "simple");
+  $("view-switch").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === state.view));
+  if (save) { try { localStorage.setItem("bac-view", state.view); } catch { /* private mode */ } writeUrl(); }
+  updateTabs();
+}
+
+function wireEase() {
+  // view: the link wins, then the last choice, then simple
+  const q = new URLSearchParams(location.search);
+  let saved = null;
+  try { saved = localStorage.getItem("bac-view"); } catch { /* private mode */ }
+  const advanced = q.get("cal") || q.get("aqua") || q.get("viirs");
+  setView(q.get("view") || (advanced ? "detailed" : saved) || "simple", false);
+  $("view-switch").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (b) setView(b.dataset.v);
+  });
+
+  // the guide opens by itself on a first visit
+  const guide = $("guide");
+  let seen = false;
+  try { seen = !!localStorage.getItem("bac-guide"); } catch { /* private mode */ }
+  guide.hidden = seen;
+  const closeGuide = () => { guide.hidden = true; try { localStorage.setItem("bac-guide", "1"); } catch { /* */ } };
+  $("guide-close").addEventListener("click", closeGuide);
+  $("guide-open").addEventListener("click", () => { guide.hidden = !guide.hidden; if (!guide.hidden) guide.scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "nearest" }); });
+
+  // explanations
+  let openInfo = null;
+  const box = $("explain");
+  const closeInfo = () => { box.hidden = true; openInfo?.setAttribute("aria-expanded", "false"); openInfo = null; };
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button.info");
+    if (!b) { if (!e.target.closest("#explain")) closeInfo(); return; }
+    e.preventDefault(); e.stopPropagation();
+    if (openInfo === b) { closeInfo(); return; }
+    closeInfo();
+    $("explain-text").textContent = GLOSSARY[b.dataset.term] || "";
+    box.hidden = false;
+    const r = b.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+    box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left - 16))}px`;
+    box.style.top = `${r.bottom + 8 + h > innerHeight ? r.top - h - 8 : r.bottom + 8}px`;
+    b.setAttribute("aria-expanded", "true"); openInfo = b; openedAt = scrollY;
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeInfo(); });
+  let openedAt = 0;          // close when the page has scrolled well away, not on a nudge
+  addEventListener("scroll", () => { if (openInfo && Math.abs(scrollY - openedAt) > 120) closeInfo(); }, { passive: true });
+  document.querySelectorAll("button.info").forEach((b) => b.setAttribute("aria-expanded", "false"));
+
+  wireFinder();
+
+  // section tabs: mark the part on screen
+  const tabs = [...$("section-tabs").querySelectorAll("a")];
+  const io = new IntersectionObserver((entries) => {
+    for (const en of entries) {
+      if (!en.isIntersecting) continue;
+      tabs.forEach((a) => a.classList.toggle("on", a.getAttribute("href") === `#${en.target.id}`));
+    }
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  tabs.forEach((a) => { const t = document.querySelector(a.getAttribute("href")); if (t) io.observe(t); });
+}
+
+// hide tabs whose part is hidden (no districts, simple view)
+function updateTabs() {
+  $("section-tabs").querySelectorAll("a").forEach((a) => {
+    const t = document.querySelector(a.getAttribute("href"));
+    a.hidden = !t || t.hidden || getComputedStyle(t).display === "none";
+  });
+}
+
+// ---------------------------------------------------- status at a glance
+const ICONS = {
+  far: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 15 14H1z" fill="currentColor" opacity=".25"/><path d="M8 1.5 15 14H1z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 6v4M8 11.6v.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  above: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  normal: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  below: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3.5 8.5 8 13l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  quiet: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+};
+const LEVEL_NAME = { far: "Far above usual", above: "Above usual", normal: "About usual", below: "Below usual", quiet: "Quiet season" };
+
+function renderStatus() {
+  const el = $("status");
+  if (!season || season.ref.length < 3) { el.hidden = true; updateTabs(); return; }
+  const o = S.outlook(season, 14), now = o.last.value, usual = o.last.median, yrs = o.last.years;
+  if (!Number.isFinite(now)) { el.hidden = true; updateTabs(); return; }
+  let level;
+  if (!(usual >= 3) && now < 5) level = "quiet";
+  else if (yrs >= 5 && now >= 5 && o.last.below >= Math.ceil(0.9 * yrs) && now >= 1.5 * usual) level = "far";
+  else if (now > 1.2 * usual && o.last.below >= yrs / 2) level = "above";
+  else if (now < 0.8 * usual) level = "below";
+  else level = "normal";
+  const name = selName(state.sel).replace(/\s*\(\d+ districts?\)$/, "");
+  const phrase = { far: "far above usual", above: "above usual", normal: "about usual", below: "below usual", quiet: "low, as usual at this time of year" }[level];
+  let text = `Right now in <b>${name}</b>, burning is <b>${phrase}</b>: ${fmt(now)} fire-days in the last 14 days, against a usual ${fmt(usual)} for these dates.`;
+  // districts far above their usual level, within the selection
+  if (recent && districts) {
+    const inSel = state.sel.kind === "districts" ? new Set(state.sel.ids) : new Set(districts.focusIds);
+    const list = recent.districts.filter((r) => inSel.has(r.id) && districts.districts[r.id].cells > 0 && Number.isFinite(r.now));
+    const flagged = list.filter((r) => r.flagged);
+    if (list.length > 1) {
+      text += flagged.length
+        ? ` <b>${flagged.length} of ${list.length} districts</b> ${flagged.length === 1 ? "is far above its" : "are far above their"} usual level in the last ${recent.days} days.`
+        : ` No district is far above its usual level in the last ${recent.days} days.`;
+    }
+  }
+  const verb = { rises: "usually rises", falls: "usually falls", steady: "usually stays about the same", quiet: "is usually quiet" }[o.direction];
+  text += ` Burning ${verb} over the next two weeks.`;
+  const main = [...season.periods].sort((a, b) => b.share - a.share)[0];
+  if (main) text += ` The main burning season is ${S.doyLabel(main.start)} to ${S.doyLabel(main.end)}.`;
+  const links = [
+    recent && recent.districts.some((r) => r.flagged) ? `<a class="link" href="#alerts-block">See the districts</a>` : "",
+    `<a class="link" href="#outlook-block">The next two weeks</a>`,
+    `<a class="link" href="#calendar-block">The burning calendar</a>`,
+  ].join("");
+  el.className = `status ${level}`;
+  el.innerHTML = `<span class="badge">${ICONS[level]}${LEVEL_NAME[level]}</span><div><p class="status-text">${text}</p><p class="status-more">${links}</p></div>`;
+  el.hidden = false;
+  updateTabs();
+}
+
+// ---------------------------------------------------- find a district
+function wireFinder() {
+  const input = $("find"), list = $("find-list");
+  const plain = (t) => t.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  let index = [], others = null, active = -1, shown = [];
+  const add = (slug, area, d) => {
+    if (!d) return;
+    const focus = new Set(d.focusIds || d.districts.filter((x) => d.focus.includes(x.state)).map((x) => x.id));
+    for (const x of d.districts) {
+      if (focus.has(x.id) && x.cells > 0) index.push({ slug, area, id: x.id, name: x.name, state: x.state, key: plain(x.name) });
+    }
+  };
+  add(current?.slug, current?.name || meta.region, districts);
+  const loadOthers = () => {
+    others ||= Promise.all(regions.filter((r) => r.slug !== current?.slug).map((r) =>
+      fetch(`data/${r.slug}/districts.json`).then((x) => (x.ok ? x.json() : null)).then((d) => add(r.slug, r.name, d)).catch(() => {})))
+      .then(() => show());
+    return others;
+  };
+  const show = () => {
+    const q = plain(input.value.trim());
+    if (q.length < 2) { list.hidden = true; input.setAttribute("aria-expanded", "false"); return; }
+    const starts = index.filter((e) => e.key.startsWith(q)), has = index.filter((e) => !e.key.startsWith(q) && e.key.includes(q));
+    shown = [...starts, ...has].slice(0, 8);
+    active = shown.length ? 0 : -1;
+    list.innerHTML = shown.length
+      ? shown.map((e, i) => `<li role="option" id="find-${i}" aria-selected="${i === active}" data-i="${i}">${e.name}, ${e.state}<small>${e.slug === current?.slug ? "" : e.area}</small></li>`).join("")
+      : `<li class="none">No district by that name in the study areas</li>`;
+    list.hidden = false; input.setAttribute("aria-expanded", "true");
+    input.setAttribute("aria-activedescendant", active >= 0 ? `find-${active}` : "");
+  };
+  const pick = (e) => {
+    list.hidden = true; input.value = `${e.name}, ${e.state}`; input.setAttribute("aria-expanded", "false");
+    if (e.slug === current?.slug) {
+      state.sel = { kind: "districts", ids: [e.id] };
+      update();
+      mini?.open(e.id, [state.yearFrom, state.yearTo]);
+      $("map").scrollIntoView({ behavior: reduced() ? "auto" : "smooth", block: "start" });
+    } else {
+      location.href = `?region=${encodeURIComponent(e.slug)}&area=d:${e.id}#explore`;
+    }
+  };
+  input.addEventListener("focus", loadOthers);
+  input.addEventListener("input", () => { show(); loadOthers(); });
+  input.addEventListener("keydown", (e) => {
+    if (list.hidden || !shown.length) { if (e.key === "Escape") list.hidden = true; return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      active = (active + (e.key === "ArrowDown" ? 1 : -1) + shown.length) % shown.length;
+      list.querySelectorAll("li").forEach((li, i) => li.setAttribute("aria-selected", i === active));
+      input.setAttribute("aria-activedescendant", `find-${active}`);
+    } else if (e.key === "Enter") { e.preventDefault(); if (active >= 0) pick(shown.at(active)); }
+    else if (e.key === "Escape") { list.hidden = true; input.setAttribute("aria-expanded", "false"); }
+  });
+  list.addEventListener("mousedown", (e) => {
+    const li = e.target.closest("li[data-i]"); if (!li) return;
+    e.preventDefault(); pick(shown.at(+li.dataset.i));
+  });
+  input.addEventListener("blur", () => setTimeout(() => { list.hidden = true; input.setAttribute("aria-expanded", "false"); }, 120));
+}
