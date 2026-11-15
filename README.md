@@ -2,6 +2,9 @@
 
 NASA Space Apps Challenge 2026, "Harmonization of MODIS and VIIRS Hot Spots".
 
+Team: Suhani Koul, Deepankar Anand, Riya Rajesh.
+Live site: https://juwariyahanam.github.io/burning-activity-calendar/
+
 A web app that turns MODIS and VIIRS active fire hotspots from NASA FIRMS
 into one consistent burning calendar for a chosen area.
 
@@ -163,14 +166,28 @@ Cloud from the same repository.
   `build_site.py` (cached in `data/boundaries/`); shown for reference only.
 - Libraries: Streamlit, pandas, NumPy, Plotly, Folium, streamlit-folium.
 - Website: NASA Blue Marble Earth imagery (public domain, colour-graded, with generated clouds) via the three-globe package on jsDelivr; Natural Earth land outlines (public domain, fallback) via the world-atlas package; Instrument Sans font (Google Fonts, SIL Open Font License).
-- TODO: list every other dataset, library and reference you use.
+- Methods: Theil-Sen slope (Sen 1968, JASA 63: 1379-1389) and Mann-Kendall
+  trend test (Mann 1945; Kendall 1975) for the season and district trends.
+- Fire products: Giglio, Schroeder and Justice (2016), Remote Sensing of
+  Environment 178: 31-41 (MODIS C6); Schroeder et al. (2014), Remote Sensing of
+  Environment 143: 85-96 (VIIRS 375 m).
+- Email alerts and the live fire map linked from the site are NASA FIRMS services.
 
 ## Use of AI
 
-Code in this repository was drafted with Claude (Anthropic) and reviewed,
-tested and adapted by the team. TODO: describe where and how, to match your
-submission form. No AI-generated data is used in the results; the synthetic
-generator in `tests/` exists only to test the code.
+The challenge set the idea: a harmonized burning calendar from MODIS and
+VIIRS hotspots. The team chose the study areas, the design direction, the
+features and the calibration method (one scaling factor per calendar month,
+picked from the validation results: 14.1% held-out monthly error against 21.1%
+for a single factor in Punjab & Haryana), and ran and checked every step on the
+real data.
+
+Claude (Anthropic), an AI assistant, drafted most of the code (download,
+cleaning, harmonization, validation, website), the documentation and the
+on-page text, following the team's instructions; the team reviewed, tested
+and adapted it. Files drafted this way say so in a comment at the top. No
+AI-generated data is used in the results: every number comes from NASA FIRMS
+detections. The synthetic generator in `tests/` exists only to test the code.
 
 ## Licence
 
